@@ -4,202 +4,187 @@ Created on Mar 3, 2014
 @author: steve
 '''
 import unittest
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
+import webtest
 import datetime
 
+import main
 import interface
-from urllib.request import urlopen
+import users
+from database import COMP249Db
+
 
 class Level3FunctionalTests(unittest.TestCase):
 
-    base_url = 'http://localhost:8000/'
-    
     def setUp(self):
-        self.driver = webdriver.Firefox()
-        self.driver.implicitly_wait(3)
+        self.app = webtest.TestApp(main.application)
+        self.db = COMP249Db()
+        self.db.create_tables()
+        self.db.sample_data()
+        self.users = self.db.users
+
 
     def tearDown(self):
-        self.driver.close()
-            
+        pass
+
     def doLogin(self, email, password):
-        """Perform a login with some validation along the way"""
-        
-        driver = self.driver
-        
-        # there is a form with id='loginform'
-        try:
-            loginform = driver.find_element_by_id('loginform')
-        except NoSuchElementException:
-            self.fail("no form with id='loginform' found")
- 
+        """Perform a login with some validation along the way,
+         returns the response to the login request"""
+
+        response = self.app.get('/')
+
+        # there is a form with the id 'loginform'
+        loginform = response.forms['loginform']
+        self.assertIsNotNone(loginform, "no form with id loginform in the page")
+
         # login form action should be /login
-        self.assertEqual(self.base_url + 'login', loginform.get_attribute('action'), "login form action should be '/login'")
- 
+        self.assertEqual('/login', loginform.action, "login form action should be '/login'")
+
         # the form has an email field
-        try:
-            emailfield = loginform.find_element_by_name('email')
-        except NoSuchElementException:
-            self.fail("no email field found for login form")
-        
+        self.assertIn('email', loginform.fields)
         # and a password field
-        try: 
-            passwordfield = loginform.find_element_by_name('password')
-        except NoSuchElementException:
-                self.fail("no password field found for login form")
-                
-        self.assertEqual(passwordfield.get_attribute('type'), 'password', "Password field should have type='password'")                
-                
-        emailfield.send_keys(email)
-        passwordfield.send_keys(password)
-        # submit the form
-        loginform.submit()
-        
-                        
-                
+        self.assertIn('password', loginform.fields)
+
+    #    self.assertEqual(response.html.find_all(id='loginform')[0], 'password', "Password field should have type='password'")
+
+        loginform['email'] = email
+        loginform['password'] = password
+
+        return loginform.submit()
+
+
+
     def testLoginForms(self):
-        """As a visitor to the site, when I load the home page, 
+        """As a visitor to the site, when I load the home page,
         I see a form with entry boxes for email and password and a button labelled Login."""
-        
-        driver = self.driver
-        driver.get(self.base_url)
-         
-        # fill out the form
-        email = 'bob@here.com'
-        password = 'bob'
-                
-        # As a registered user, when I enter my email address (bob@here.com) and password 
-        # (bob) into the login form and click on the Login button, the page I get in 
-        # response is a version of the home page with the login form replaced by the message
-        # "Logged in as bob@here.com" and a button labelled Logout.    
-        
-        self.doLogin(email, password)
-        
-        # expect to see user email address in returned page
-        text = driver.find_element_by_tag_name('body').text
-        
-        self.assertIn("Logged in as %s" % email, text)
-        
-        try:
-            logouts = driver.find_element_by_name('logout')
-        except NoSuchElementException:
-                self.fail("no logout button found")
-        
-        # The response also includes a cookie with the name 
+
+        (password, nick, avatar) = self.users[0]
+
+        # As a registered user, when I enter my email address (bob@here.com) and password
+        # (bob) into the login form and click on the Login button,
+
+        response = self.doLogin(nick, password)
+
+        self.assertEqual('303 See Other', response.status)
+        self.assertEqual('/', response.headers['Location'])
+
+        # The response also includes a cookie with the name
         # sessionid that contains some kind of random string.
 
-        all_cookies = driver.get_cookies()
-        self.assertEqual(1, len(all_cookies))
-        cookie = all_cookies[0]
-        self.assertEqual(cookie['name'], 'sessionid')
+        self.assertIn(users.COOKIE_NAME, self.app.cookies)
+        sessionid = self.app.cookies[users.COOKIE_NAME]
 
     def testLoginError(self):
-        """As a registered user, when I enter my email address but get my 
-        password wrong and click on the Login button, the page I get in 
-        response contains a message "Login Failed, please try again". 
+        """As a registered user, when I enter my email address but get my
+        password wrong and click on the Login button, the page I get in
+        response contains a message "Login Failed, please try again".
         The page also includes another login form."""
-        
-        driver = self.driver
-        driver.get(self.base_url)
-         
-        # fill out the form
-        email = 'bob@here.com'
-        password = 'wrong password'
- 
-        self.doLogin(email, password)
-        
-        # expect to see login failed message in the page
-        text = driver.find_element_by_tag_name('body').text
-        
-        self.assertIn("Login Failed, please try again", text)
+
+
+        (password, nick, avatar) = self.users[0]
+
+        # try an invalid password
+
+        response = self.doLogin(nick, 'not the password')
+
+        # should see a page returned with the word Error somewhere
+        self.assertEqual('200 OK', response.status)
+        self.assertIn("Failed", response)
+
+        # Should not have a cookie
+        self.assertNotIn(users.COOKIE_NAME, self.app.cookies)
+
+
+    def testLoginPagesLogoutForm(self):
+        """As a registered user, once I have logged in,
+         every page that I request contains my name and the logout form."""
+
+        (password, nick, avatar) = self.users[0]
+
+        response1 = self.doLogin(nick, password)
+        response2 = self.app.get('/')
+
+        # no login form
+        self.assertNotIn('loginform', response2.forms)
+
+        # but a logout form
+        self.assertIn('logoutform', response2.forms)
+        logoutform = response2.forms['logoutform']
+        self.assertEqual('/logout', logoutform.action)
+
+        # and the message "Logged in as XXX"
+        self.assertIn("Logged in as %s" % nick, response2)
+
+    def testLogoutForm(self):
+        """As a registered user, once I have logged in, if I click on the Logout
+        button in a page, the page that I get in response is the site home
+        page which now doesn't have my name and again shows the login form."""
+
+        (password, nick, avatar) = self.users[0]
+
+        response1 = self.doLogin(nick, password)
+        response2 = self.app.get('/')
+
+        # and a logout form
+        self.assertIn('logoutform', response2.forms)
+        logoutform = response2.forms['logoutform']
+
+        response3 = logoutform.submit()
+        # response should be a redirect
+        self.assertEqual('303 See Other', response3.status)
+        self.assertEqual('/', response3.headers['Location'])
+
+        response4 = self.app.get('/')
+        # should see login form again
+        loginform = response4.forms['loginform']
+        self.assertIsNotNone(loginform, "no form with id loginform in the page")
+
+
 
     def testMyImages(self):
-        """As a registered user, once I have logged in, on the home 
-        page I see a new link called "My Images". When I click on this 
-        link the page I get in response contains all of the images that 
-        I have uploaded listed in order of date (newest first). Each 
-        image is displayed as on the home page with my name, the date 
+        """As a registered user, once I have logged in, on the home
+        page I see a new link called "My Images". When I click on this
+        link the page I get in response contains all of the images that
+        I have uploaded listed in order of date (newest first). Each
+        image is displayed as on the home page with my name, the date
         and a list of comments. Each image also has a comment form."""
 
-        driver = self.driver
-        driver.get(self.base_url)
-         
-        # fill out the form
-        email = 'bob@here.com'
-        password = 'bob'
-        
-        self.doLogin(email, password)
-        
+        (password, nick, avatar) = self.users[0]
+
+        self.doLogin(nick, password)
+        response = self.app.get('/')
+
         # expect to see link to my images
-        try:
-            imagelink = driver.find_element_by_link_text('My Images')        
-        except NoSuchElementException:
-            self.fail("can't find link to My Images page")
-            
-        imagelink.click()
-        
+        links = response.html.find_all('a', string='My Images')  # breaks in BS 4.3, need text=
+        self.assertEqual(len(links), 1, "can't find link to My Images in page")
+        imagelink = links[0]
+
+        # follow the link
+        response = self.app.get(imagelink['href'])
+
         # on the page returned I expect to see all my images
-        
-        flowtows = driver.find_elements_by_class_name('flowtow')
-        
+
+        flowtows = response.html.find_all(class_='flowtow')
+
         # each contains the username and an image
         for div in flowtows:
-            
+
             # our email address should be mentioned
             self.assertIn(email, div.text)
-            
+
             # look for just one image
-            img = div.find_elements_by_tag_name('img')
+            img = div.find_all('img')
             self.assertEqual(1, len(img))
-            
-            # can we actually get the image 
+
+            # check for a comment form
+            self.assertGreater(len(div.find_all('form')), 0)
+
+            # can we actually get the image
             # find the URL
-            url = img[0].get_attribute('src')
+            url = img[0]['src']
             # try requesting it and test the content-type header returned
-            h = urlopen(url)
-            self.assertEqual('image/jpeg', h.getheader('content-type'))
-            h.close()
-            
-            # is there a comment form
-            try:
-                div.find_elements_by_tag_name('form')
-            except NoSuchElementException:
-                self.fail("No form found in flowtow div")
-                
-    
-    def testNameInAllPages(self):
-        """As a registered user, once I have logged in,
-         every page that I request contains my name and the logout button."""
-        
-        driver = self.driver
-        driver.get(self.base_url)
-         
-        # fill out the form
-        email = 'bob@here.com'
-        password = 'bob'
-                
-        # As a registered user, when I enter my email address (bob@here.com) and password 
-        # (bob) into the login form and click on the Login button, the page I get in 
-        # response is a version of the home page with the login form replaced by the message
-        # "Logged in as bob@here.com" and a button labelled Logout.    
-        
-        self.doLogin(email, password)
-        
-        # get another page
-            
-        driver.find_element_by_link_text('About').click()
-        
-        # expect to see user email address in returned page
-        text = driver.find_element_by_tag_name('body').text
-    
-        self.assertIn("Logged in as %s" % email, text, "Logged in message not found in About page")
-    
-        try:
-            logouts = driver.find_element_by_name('logout')
-        except NoSuchElementException:
-                self.fail("no logout button found in About page")
-    
+            resp = self.app.get(url)
+            self.assertEqual('image/jpeg', resp.content_type)
+
 
 
 if __name__ == "__main__":

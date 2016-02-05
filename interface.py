@@ -3,14 +3,12 @@ Created on Mar 28, 2014
 
 @author: steve
 '''
-import datetime
-
 
 def list_comments(db, filename):
     """Return a list of the comments stored for this image filename"""
-    
+
     cursor = db.cursor()
-    
+
     cursor.execute("select comment from comments where filename=?", (filename,))
     result = []
     for row in cursor:
@@ -18,28 +16,26 @@ def list_comments(db, filename):
     return result
 
 
-def add_comment(db, filename, comment):
+def add_comment(db, filename, comment, usernick):
     """Add this comment to the database for this image filename"""
-    
-    print("ADD COMMENT", filename, comment)
-    
-    sql = "insert into comments values (?, ?)"
-    
+
+    sql = "insert into comments (filename, comment, usernick) values (?, ?, ?)"
+
     cursor = db.cursor()
-    cursor.execute(sql, (filename, comment))
-    
+    cursor.execute(sql, (filename, comment, usernick))
+
     db.commit()
-    
-    
+
+
 def list_images(db, n):
-    """Return a list of tuples for the first 'n' images in 
-    order of date.  Tuples should contain (filename, date, useremail, comments)."""
-    
-    sql = "select filename, date, useremail from images order by date desc limit ?"
-    
+    """Return a list of tuples for the first 'n' images in
+    order of timestamp.  Tuples should contain (filename, timestamp, usernick, comments)."""
+
+    sql = "select filename, timestamp, usernick from images order by timestamp desc limit ?"
+
     cursor = db.cursor()
     cursor.execute(sql, (n,))
-    
+
     result = []
     for row in cursor:
         comments = list_comments(db, row[0])
@@ -47,39 +43,37 @@ def list_images(db, n):
     return result
 
 def list_only_images(db, n):
-    """Return a list of tuples for the first 'n' images in 
-    order of date.  Tuples should contain (filename, date, useremail)."""
-    
-    sql = "select filename, date, useremail from images order by date desc limit ?"
-    
+    """Return a list of tuples for the first 'n' images in
+    order of timestamp.  Tuples should contain (filename, timestamp, usernick)."""
+
+    sql = "select filename, timestamp, usernick from images order by timestamp desc limit ?"
+
     cursor = db.cursor()
     cursor.execute(sql, (n,))
-    
+
     return cursor.fetchall()
 
 
 
-def list_images_for_user(db, useremail):
+def list_images_for_user(db, usernick):
   """Return a list of tuples for the images belonging to this user.
-    Tuples should contain (filename, date, useremail)."""
-  
-  sql = "select filename, date, useremail from images where useremail=? order by date desc"
-  
+    Tuples should contain (filename, timestamp, usernick)."""
+
+  sql = "select filename, timestamp, usernick from images where usernick=? order by timestamp desc"
+
   cursor = db.cursor()
-  cursor.execute(sql, (useremail,))
-  
+  cursor.execute(sql, (usernick,))
+
   return cursor.fetchall()
-    
-    
-    
-def add_image(db, filename, useremail):
+
+
+
+def add_image(db, filename, usernick):
     """Add this image to the database for the given user"""
-    
-    sql = "insert into images values (?, ?, ?)"
-    
-    date = datetime.datetime.today().strftime("%Y-%m-%d")
-    
+
+    sql = "insert into images (filename, usernick) values (?, ?, ?)"
+
     cursor = db.cursor()
-    cursor.execute(sql, (filename, date, useremail))
-    
+    cursor.execute(sql, (filename, usernick))
+
     db.commit()

@@ -5,6 +5,7 @@ Created on Mar 26, 2012
 '''
 
 import sqlite3
+import random
 
 class COMP249Db():
     '''
@@ -16,117 +17,127 @@ class COMP249Db():
         '''
         Constructor
         '''
-        
+
         self.dbname = dbname
         self.conn = sqlite3.connect(self.dbname)
         ### ensure that results returned from queries are strings rather
         # than unicode which doesn't work well with WSGI
         self.conn.text_factory = str
-        
+
     def cursor(self):
         """Return a cursor on the database"""
-        
+
         return self.conn.cursor()
-    
+
     def commit(self):
         """Commit pending changes"""
-        
+
         self.conn.commit()
-        
+
     def delete(self):
         """Destroy the database file"""
         pass
-        
-        
+
+
     def crypt(self, password):
         """Return a one-way hashed version of the password suitable for
         storage in the database"""
-        
+
         import hashlib
-        
+
         return hashlib.sha1(password.encode()).hexdigest()
-        
+
 
     def create_tables(self):
         """Create and initialise the database tables
         This will have the effect of overwriting any existing
         data."""
-        
-        
+
+
         sql = """
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
-           email text unique primary key,
+           nick text unique primary key,
            password text,
-           nick text,
            avatar text
 );
 
 DROP TABLE IF EXISTS sessions;
 CREATE TABLE sessions (
             sessionid text unique primary key,
-            useremail text,
-            FOREIGN KEY(useremail) REFERENCES users(email)
+            usernick text,
+            FOREIGN KEY(usernick) REFERENCES users(nick)
 );
 
 DROP TABLE IF EXISTS images;
 CREATE TABLE images (
             filename text unique primary key,
-            date text,
-            useremail text,
-            FOREIGN KEY(useremail) REFERENCES users(email)
+            timestamp text default CURRENT_TIMESTAMP,
+            usernick text,
+            FOREIGN KEY(usernick) REFERENCES users(nick)
 );
 
 DROP TABLE IF EXISTS comments;
 CREATE TABLE comments (
             filename text,
+            timestamp text default CURRENT_TIMESTAMP,
             comment text,
-            FOREIGN KEY(filename) REFERENCES images(filename)
+            usernick text,
+            FOREIGN KEY(filename) REFERENCES images(filename),
+            FOREIGN KEY(usernick) REFERENCES users(nick)
 );"""
 
         self.conn.executescript(sql)
         self.conn.commit()
-        
-    
+
+
     def sample_data(self):
         """Generate some sample data for testing the web
         application. Erases any existing data in the
         database"""
-        
-                #  email,         pass,   nick             avatar
-        users = [('bob@here.com', 'bob', 'Bob Bobalooba', 'bob'),
-                 ('jim@there.com', 'jim', 'The Jimbulator', 'default'),
-                 ('mary@where.com', 'mary', 'Mary, Contrary', 'mary')]
+
+                    #  pass,   nick             avatar
+        self.users = [('bob', 'Bobalooba', 'http://robohash.org/bob'),
+                      ('jim', 'Jimbulator', 'http://robohash.org/jim'),
+                      ('mary', 'Contrary', 'http://robohash.org/mary'),
+                      ('jb', 'Bean', 'http://robohash.org/jb'),
+                      ('mandible', 'Mandible', 'http://robohash.org/mandible'),
+                      ('bar', 'Barfoo', 'http://robohash.org/bar'),
+        ]
+        #  Robots lovingly delivered by Robohash.org
 
 
         # filename, date, useremail, comments
-        images = [ 
-                   ('cycling.jpg',     '2014-01-14', 'bob@here.com', ['cool photo', 'thx']),
-                   ('window.jpg',      '2014-01-12', 'jim@there.com', []),
-                   ('hang-glider.jpg', '2013-11-18', 'bob@here.com', ['much wave', 'wow']),
-                   ('seashell.jpg',    '2013-07-01', 'mary@where.com', ['ahh, seashell!'])
+        images = [
+                   ('cycling.jpg',     '2015-02-20 01:45:06', 'bob', ['cool photo', 'thx']),
+                   ('window.jpg',      '2015-02-20 00:54:53', 'jim', []),
+                   ('hang-glider.jpg', '2015-02-19 20:43:48', 'bob', ['much wave', 'wow']),
+                   ('seashell.jpg',    '2015-02-19 19:03:22', 'mary', ['ahh, seashell!'])
                  ]
-        
-        
-        # create one entry per unit for each user
+
+
+        # create one entry per image for each user
         cursor = self.cursor()
-        for email, password, nick, avatar in users:
-            sql = "INSERT INTO users VALUES (?, ?, ?, ?)"
-            cursor.execute(sql, (email, self.crypt(password), nick, avatar))
-            
-        for fname, date, useremail, comments in images:
-            sql = 'INSERT INTO images VALUES (?, ?, ?)'
-          
+        # create one entry for each user
+        for password, nick, avatar in self.users:
+            sql = "INSERT INTO users (nick, password, avatar) VALUES (?, ?, ?)"
+            cursor.execute(sql, (nick, self.crypt(password), avatar))
+
+        for fname, date, nick, comments in images:
+            sql = 'INSERT INTO images (filename, timestamp, usernick) VALUES (?, ?, ?)'
+
             # now create the database entry for this image
-            cursor.execute(sql, (fname, date, useremail))
+            cursor.execute(sql, (fname, date, nick))
             # and create some comments
-            sql = "INSERT INTO comments VALUES (?, ?)"
+            sql = "INSERT INTO comments (filename, comment, usernick) VALUES (?, ?, ?)"
             for comment in comments:
-                cursor.execute(sql, (fname, comment))
-                
+                # choose a random user as the author of this comment
+                author = random.choice([u[1] for u in self.users])
+                cursor.execute(sql, (fname, comment, author))
+
         # commit all updates to the database
         self.commit()
-    
+
 
 if __name__=='__main__':
     # if we call this script directly, create the database and make sample data
