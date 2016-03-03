@@ -6,12 +6,13 @@ Created on Mar 3, 2014
 import unittest
 from webtest import TestApp
 import main
-import mock
+import bottle
 
 class Level1FunctionalTests(unittest.TestCase):
 
     def setUp(self):
         self.app = TestApp(main.application)
+        bottle.debug() # force debug messages in error pages returned by webtest
 
     def tearDown(self):
         pass
@@ -38,19 +39,16 @@ class Level1FunctionalTests(unittest.TestCase):
 
         flowtows = result.html.find_all(class_='flowtow')
 
-        image_list = mock.list_images(3)
-
         self.assertEqual(3, len(flowtows))
 
-        # each contains the image, date, author and comments
+        # each contains the image (check for like form in another test)
         for index in range(3):
             div = flowtows[index]
-            (path, date, user, comments) = image_list[index]
 
-            self.assertIn(date, div.text)
-            self.assertIn(user, div.text)
-            for c in comments:
-                self.assertIn(c, div.text)
+            # should contain elements with class 'user', 'date' and 'likes'
+            self.assertNotEqual([], div.find_all(class_='user'), "can't find element with class 'user' in flowtow div")
+            self.assertNotEqual([], div.find_all(class_='date'), "can't find element with class 'date' in flowtow div")
+            self.assertNotEqual([], div.find_all(class_='likes'), "can't find element with class 'likes' in flowtow div")
 
             # look for just one image
             img = div.find_all('img')
@@ -63,28 +61,36 @@ class Level1FunctionalTests(unittest.TestCase):
             newresult = self.app.get(url)
             self.assertEqual('image/jpeg', newresult.content_type)
 
-    def testImageCommentForms(self):
-        """As a visitor to the site, when I load the home page I see a comment form below each
-image with the placeholder text "Enter your comment here" and a button labelled "Submit"
+    def testImageLikeForms(self):
+        """As a visitor to the site, when I load the home page I see a button below each image with the text "Like".
+
+        The button is part of a form that submits a like request. The action of the form should be /like,
+        the form should have a hidden field called filename containing the filename of the image being liked
+        and the button should be the submit button in the from.
         """
 
         result = self.app.get('/')
 
         flowtows = result.html.find_all(class_='flowtow')
 
-        # each contains the form for comments
+        # each contains the form for liking images
         for div in flowtows:
-            # look for two inputs
-            inputs = div.find_all('input')
-            self.assertGreater(len(inputs), 1, "Expected at least two input fields (comment and submit)")
 
-            # check that the required inputs have the right attributes
+            forms = div.find_all('form')
+            self.assertEqual(len(forms), 1, "expected one form in image div:\n\n%s" % str(div))
+
+            form = forms[0]
+
+            # look for two inputs
+            inputs = form.find_all('input')
+            self.assertGreater(len(inputs), 1, "Expected at least two input fields (filename and submit) in: \n\n%s" % str(div))
+
+            # check that the submit input has the right attributes
             for i in inputs:
                 if i['type'] == 'submit':
-                    self.assertEqual('Submit', i['value'])
-                elif i['name'] == 'comment':
-                    self.assertEqual('Enter your comment here', i['placeholder'])
+                    self.assertEqual('Like', i['value'], "submit button on the form should have the value 'Like'")
 
+            self.assertEqual(form['action'], '/like', "form action should be /like")
 
 
     def testAboutSiteLink(self):

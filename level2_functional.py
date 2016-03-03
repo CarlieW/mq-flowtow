@@ -5,7 +5,7 @@ Created on Mar 3, 2014
 '''
 import unittest
 import webtest
-import datetime
+import re
 
 import main
 import interface
@@ -24,89 +24,113 @@ class Level2FunctionalTests(unittest.TestCase):
         pass
 
 
-    def testSubmitCommentForms(self):
-        """As a visitor to the site, when I load the home page I see a comment form below each
-image with the placeholder text "Enter your comment here" and a button labelled "Submit"
-        """
+    def testImagesPresent(self):
+        """As a visitor to the site, when I load the home page I
+        see three images displayed, each
+        labelled with a date, a user name and a title. """
 
-        testcomment = "This is a TEST Comment %s" % datetime.datetime.today()
+        result = self.app.get('/')
 
-        response = self.app.get('/')
+        images = result.html.find_all('img')
 
-        flowtows = response.html.find_all(class_='flowtow')
-        self.assertEqual(len(flowtows), 3, "Expected three divs with class flowtow in page")
+        # expect to find three images
+        self.assertEqual(3, len(images), "Wrong number of images found")
 
-        # get the first div
-        div = flowtows[0]
+        flowtows = result.html.find_all(class_='flowtow')
 
-        # find the first form
-        f = div.find_all('form')[0]
+        image_list = self.db.images
 
-        # make a webtest form from this
-        form = webtest.forms.Form(response, str(f))
+        self.assertEqual(3, len(flowtows))
 
-        form['comment'] = testcomment
+        # each contains the image, date, author and likes
+        for index in range(3):
+            div = flowtows[index]
+            (path, date, user, likes) = image_list[index]
 
-        response = form.submit()
+            self.assertIn(date, div.text)
+            self.assertIn(user, div.text)
+            # look for the number of likes
+            self.assertIn(str(len(likes)+1), div.text, "expected to find %d likes mentioned in:\n\n%s" % (len(likes), div))
 
-        # response should be a redirect
-        self.assertEqual('303 See Other', response.status)
-        self.assertEqual('/', response.headers['Location'])
+            # look for just one image
+            img = div.find_all('img')
+            self.assertEqual(1, len(img))
 
-        # follow the redirect
-        response = response.follow()
-
-        # check that the comment is in the first flowtow div in the returned page
-
-        divs = response.html.find_all(class_='flowtow')
-
-        self.assertEqual(3, len(divs), "wrong number of flowtow divs in page")
-
-        # look for the comment in the first
-        self.assertIn(testcomment, divs[0].text)
+            # can we actually get the image
+            # find the URL
+            url = img[0]['src']
+            # try requesting it and test the content-type header returned
+            newresult = self.app.get(url)
+            self.assertEqual('image/jpeg', newresult.content_type)
 
 
-    def testCommentMarkupQuoted(self):
-        """As a visitor to the site, when I enter a comment that contains some HTML markup,
-            the comment appears on the page with the HTML markup in quoted form.
-        """
-
-        testcomment = "Comment with <a href='http://example.com'>some markup</a> %s" % datetime.datetime.today()
+    def testLikeImage(self):
+        """As a visitor to the site, when I click on "Like" below an image,
+        the page refreshes and has one more like added to the total for that image."""
 
         response = self.app.get('/')
+        originallikes = get_page_likes(response)
 
-        flowtows = response.html.find_all(class_='flowtow')
-        self.assertEqual(len(flowtows), 3, "Expected three divs with class flowtow in page")
+        print(originallikes)
 
-        # get the first div
-        div = flowtows[0]
+        # find a form with the action /like
+        for i in response.forms:
+            form = response.forms[i]
+            if form.action == '/like':
 
-        # find the first form
-        f = div.find_all('form')[0]
+                self.assertIn('filename', form.fields, 'image like form does not have a filename field')
 
-        # make a webtest form from this
-        form = webtest.forms.Form(response, str(f))
 
-        form['comment'] = testcomment
+                filename = form['filename'].value
 
-        response = form.submit()
+                formresponse = form.submit()
 
-        # response should be a redirect
-        self.assertEqual('303 See Other', response.status)
-        self.assertEqual('/', response.headers['Location'])
+                # response should be a redirect to the main page
+                self.assertEqual('303 See Other', formresponse.status)
+                self.assertEqual('/', formresponse.headers['Location'])
 
-        # follow the redirect
-        response = response.follow()
+                # and the main page should now have one more like for this image
+                newresponse = self.app.get('/')
+                newlikes = get_page_likes(newresponse)
 
-        # check that the comment is in the first flowtow div in the returned page
+                print(newlikes)
 
-        divs = response.html.find_all(class_='flowtow')
+                for key in originallikes.keys():
+                    if key == filename:
+                        self.assertEqual(originallikes[key]+1, newlikes[key])
+                    else:
+                        self.assertEqual(originallikes[key], newlikes[key])
 
-        self.assertEqual(3, len(divs), "wrong number of flowtow divs in page")
+                # we only need to test one form
+                break
 
-        # look for the comment in the first, should see the exact string since markup should be quoted
-        self.assertIn(testcomment, divs[0].text)
 
+def get_page_likes(response):
+    """Scan a page and create a dictionary of the image filenames
+    and displayed like count for each image. Return the
+    dictionary."""
+
+    # find all flowtow divs
+    flowtows = response.html.find_all('div', class_='flowtow')
+    result = dict()
+    for div in flowtows:
+        # get the filename from the form hidden input
+        input = div.find("input", attrs={'name': "filename"})
+
+        filename = input['value']
+
+        # find the likes element
+        likesel = div.find(class_='likes')
+        # grab the integer from this element
+        m = re.match('\d+', likesel.text)
+        if m:
+            likes = int(m.group())
+        else:
+            likes = 0
+
+        result[filename] = likes
+
+    return result
 
 
 

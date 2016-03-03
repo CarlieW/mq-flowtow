@@ -51,82 +51,96 @@
     <div class="container">
  
 	<h1>Level 1</h1>
+
+
+        <p><a href="level2.html">Level 2</a> &gt;&gt;</p>
+
+    <p>For this level you must write a simple web application that generates two pages. You are given a set of
+    requirements below, these are encoded in a set of tests (<code>level1_functional.py</code> in the starter kit) that
+    your application must pass.  The tests correspond to the functional requirements below.</p>
+
      <h2>Functional requirements</h2>
 	  
- <ol>
-	<li>As a visitor to the site, when I load the home page I see the title text <em>"Welcome to FlowTow"</em>.</li>
+ <ul class="list-group">
+	<li class="list-group-item">
+        <h4 class="list-group-item-heading">Welcome to FlowTow</h4>
 
-	<li>As a visitor to the site, when I load the home page I see three images displayed, each
-	labelled with a date, a user name and the comments on the image.
 
-    <p class='bg-info'>The list of images and comments will be generated from the return value of
-    the mock database interface procedure <code>mock.list_images</code>.</p>
+        As a visitor to the site, when I load the home page I see the title text <em>"Welcome to FlowTow"</em>.</li>
+
+	<li class="list-group-item">
+                <h4 class="list-group-item-heading">Three Images</h4>
+
+        As a visitor to the site, when I load the home page I see three images displayed, each
+	labelled with a date, a user name and the number of 'Likes' for the image.
 
 	<p class='bg-info'>Each image will be contained in a &lt;div&gt; with class 'flowtow', that div will
-	contain the date, username and comments.</p>
+	contain the user nick, date and number of likes each inside an element of class <code>user</code>,
+    <code>date</code> and <code>likes</code> respectively.</p>
 	</li>
 
-	<li>As a visitor to the site, when I load the home page I see a comment form below each
-image with the placeholder text <em>"Enter your comment here"</em> and a button labelled <em>"Submit"</em></li>
+	<li class="list-group-item">
+                <h4 class="list-group-item-heading">Like Buttons</h4>
 
-	<li>As a visitor to the site, when I load the home page I see a link to another page
+        <p>As a visitor to the site, when I load the home page I see a button below each
+        image with the text <em>"Like"</em>.</p>
+
+        <p class="bg-info">The button is part of a form that submits a like request. The action of the form
+        should be <code>/like</code>, the form should have a hidden field called <code>filename</code>
+        containing the filename
+        of the image being liked and the button should be the submit button in the from. </p>
+    </li>
+
+	<li class="list-group-item">
+                <h4 class="list-group-item-heading">Link to About Page</h4>
+
+        As a visitor to the site, when I load the home page I see a link to another page
 with the link text <em>"About"</em>.</li>
 
-	<li>As a visitor to the site, when I click on the link <em>"About"</em> I am taken to 
-a page that contains the site manifesto, including the words <em>"FlowTow is a new, exciting, 
+	<li class="list-group-item">
+                <h4 class="list-group-item-heading">About Page</h4>
+
+        As a visitor to the site, when I click on the link <em>"About"</em> I am taken to
+a page that contains the site manifesto, including the words <em>"FlowTow is a new, exciting,
 photo sharing service like nothing you've seen before!"</em></li>
 
-	<li>As a visitor to the site, I notice that all the pages on the site have the same
+	<li class="list-group-item">
+        <h4 class="list-group-item-heading">CSS Stylesheet</h4>
+
+        As a visitor to the site, I notice that all the pages on the site have the same
 design with the same colours and fonts used throughout.
-	<p class='bg-info'>Each page will have a similar structure and will link to a 
+	<p class='bg-info'>Each page will have a similar structure and will link to a
 	common CSS stylesheet.</p></li>
  
-</ol>
+</ul>
 
-<h2>Unit Tests</h2>
-
-    <p>A set of unit tests is provided for Level 1 to test the mock database and templating
-    modules that have been provided for you. All tests should pass.</p>
-
-    <ol>
-    <li>
-There is a procedure 'list_images' that takes a single argument 'n' and returns a list of 
-the most recent 'n' images that have been uploaded along with their details.  The return
-value will be a list of tuples with one tuple per image, each tuple will contain four
-elements: (filename, date, useremail, comments).  'filename' is the path to the image relative to 
-the default image directory, 'date' is a date string, 'useremail' is the id of the owner
-of the image and 'comments' is a list of comment strings for this image.
-        
-    </li>
-    
-    <li>There is a procedure 'render_from_string' in the 'templating' module that 
-        takes a template string and a dictionary as input and returns a value
-        suitable for returning from a WSGI procedure containing the dictionary values 
-        substituted into the template string.</li>
-     <li>There is a procedure 'render' in the 'templating' module that behaves
-         like 'render_from_string' but reads the template from a file in
-         the 'templates' subdirectory.</li>
-    </ol>
 
 <h2>Your Task</h2>
 
-	<p>To achieve these requirements you will need to build a WSGI web application that
-		is able to serve the two HTML pages (Home and About) and the associated 
-		stylesheet and images.  The techniques to do this are covered here:</p>
+	<p>To achieve these requirements you will need to build a web application that
+    is able to serve the two HTML pages (Home and About) and the associated
+    stylesheet and images.
+    </p>
+
+    <p>This level is all about the page structure and delivering two of the pages on
+    the site - the main page and the about page.   You won't use a database at this stage,
+    when you generate the images on the main page you can hard-code the HTML in the
+    templates.  Later you will replace this with code to generate the image list
+    from the database.</p>
+
+    <p>Your web application will be quite simple, it must serve the two URLs (/ and /about)
+    as well as any static resources (CSS stylesheets, images) needed by your design. Most
+    of the work will be in designing the page templates for your site.</p>
+
+    <p>The techniques to do this are covered here:</p>
 
 	<ul>
-		<li><a href="http://pwp.stevecassidy.net/wsgi/more-wsgi.html#title0">Serving More Pages</a>
-			 shows how to write a single application that responds to different URLs using the 
-			 <code>PATH_INFO</code> value in the WSGI environment. </li>
-		<li><a href="http://pwp.stevecassidy.net/wsgi/static.html">Serving Static Files</a>
-			shows how to write a WSGI application to serve static files like CSS stylesheets
-			or images.</li>
+            <li><a href="http://pwp.stevecassidy.net/bottle/python-webapps.html">Python Web Applications</a>.</li>
+            <li><a href="http://pwp.stevecassidy.net/bottle/templating.html">Generating HTML Pages</a> looks at
+            the Bottle page templating system.</li>
+            <li><a href="http://pwp.stevecassidy.net/python/unittest.html">Testing Python Programs</a> covers
+                running unit tests.</li>
 	</ul>
-
-
-	<p>The Starter Kit includes a module for page templating that is <a href="modules.html#template">described here</a>. </p>
-	
-
 
 
     <footer class='footer'>

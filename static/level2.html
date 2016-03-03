@@ -51,30 +51,55 @@
     <div class="container">
  
 	<h1>Level 2</h1>
+
+        <p>&lt;&lt; <a href="level1.html">Level 1</a> | <a href="level3.html">Level 3</a> &gt;&gt;</p>
+
+    <p>For this level, you will add the database backend to the application and generate pages
+    based on the result of queries to the database. You will also implement the action for the
+    <em>Like</em> button.</p>
+
+    <p>The functional requirements are encoded in the <code>level2_functional.py</code> unit tests. This
+    level also includes unit tests on the procedures you will write, these are encoded in
+    <code>level2_unit.py</code>.  Your application should pass both of these tests when you complete
+    this level (as well as continuing to pass the tests for Level 1).</p>
+
 	 <h2>Functional requirements</h2>
 	  
-<p>As for level one plus:</p>
+<p>As for <a href="level1.html">Level 1</a> plus:</p>
 
-	<ol>
-	<li>As a visitor to the site, when I enter a comment into the text box below an image and press
-the "Submit" button, the page returned has the text of my comment below the same
-image.
+	<ul class="list-group">
+	    <li class="list-group-item">
+            <h4 class="list-group-item-heading">Home Page Images</h4>
 
-    <p class='bg-info'>The comment form will use a field named <code>comment</code> to hold the comment text.  Any
-    other fields required can have any name you wish.</p>
-    
-	<p class='bg-info'>The response to the form submission will be a redirect (303 See Other) response back to the 
-	home page.  When that page is then requested by the browser (interpreting the redirect), the new comment will appear
-	along with the appropriate image.</p>
 
-</li>
-		<li>As a visitor to the site, when I enter a comment that contains some HTML markup,
-			the comment appears on the page with the HTML markup in quoted form.
-			
-			<p class='bg-info'>This prevents code injection attacks on the site. Any occurence of &lt;, &gt; or &amp; should
-				be replaced by &amp;lt;, &amp;gt; or &amp;amp;.</p>
-			</li>
-	</ol>
+            <p>As a visitor to the site, when I load the home page I see three images displayed, each
+	    labelled with a date, a user name and the number of 'Likes' for the image. The images are
+            displayed in order of their date, the most recent image is at the top of the page.</p>
+
+            <p class='bg-info'>This time, you will use the <code>list_images</code> procedure from
+            the <code>interface</code>
+            module to get the list of images.  The tests will check that you are using the database
+            rather than hard-coding the images (note that we might change the image list when we
+            run the tests for marking).</p>
+
+            <p class='bg-info'>Each image will be contained in a &lt;div&gt; with class 'flowtow', that div will
+            contain the user nick, date and number of likes each inside an element of class <code>user</code>,
+            <code>date</code> and <code>likes</code> respectively.</p>
+        </li>
+
+	    <li class="list-group-item">
+            <h4 class="list-group-item-heading">Liking an Image</h4>
+
+            <p>As a visitor to the site, when I click on "Like" below an image, the page refreshes and has one
+            more like added to the total for that image.</p>
+
+            <p class='bg-info'>The response to the form submission will be a redirect (303 See Other)
+                response back to the home page.  When that page is then requested by the browser
+                (interpreting the redirect), the new likes total will appear
+                along with the appropriate image.</p>
+        </li>
+
+	</ul>
 
 	<h2>Unit Tests</h2>
 
@@ -83,74 +108,60 @@ image.
     stubs only.</p>
 
 
-<ol>
-	<li>There is a procedure <code>list_comments</code> that takes two arguments, a database 
-		connection and the 
-	name of an image and returns a list of the comments stored for that image.</li>
-	
-	<li>There is a procedure <code>add_comment</code> that takes three arguments, a database connection, 
-		the name of an
-	image and a comment as a string. The comment is stored in the database associated
-	with this image. </li>
-	
-	<li>There is a procedure <code>list_images</code> that takes a two arguments, a database connection and
+<ol class="list-group">
+	<li class="list-group-item">There is a procedure <code>list_images</code> that takes a
+        two arguments, a database connection and
 		a number  <code>n</code> and returns a list of 
 	the most recent <code>n</code> images that have been uploaded along with their details.  The return
-	value will be a list of tuples with one tuple per image, each tuple will contain four
-	elements: <code>(filename, date, useremail, comments)</code>.  <code>filename</code> is the path 
+	value will be a list of dictionaries with one dictionary per image. Each dictionary will contain four
+	keys: <code>filename</code>, <code>timestamp</code>, <code>usernick</code> and <code>likes</code>.
+        <code>filename</code> is the path
 	to the image relative to 
-	the default image directory, <code>date</code> is a date string in the format YYYY-MM-DD,
-	<code>useremail</code> is the email
-	address of the owner
-	of the image and <code>comments</code> is a list of comment strings for this image.
-	The images will be returned in reverse order of their date, with the newest image first.</li>
+	the default image directory, <code>timestamp</code> is a date string in the format "YYYY-MM-DD HH:MM:SS",
+	<code>usernick</code> is the nick of the owner
+	of the image and <code>likes</code> is the number of likes recorded for this image.
+	The images will be returned in reverse order of their timestamp, with the most recent image first.</li>
 	
-	<li>There is a procedure <code>add_image</code> which takes three arguments, a database connection and
+	<li class="list-group-item">There is a procedure <code>add_image</code> which takes
+        three arguments, a database connection and
 		the name of an image
-	file and the email address of the owner of the image.  The image name is stored
-	in the database along with the owner id and the current date.   
+	file and the user nick of the owner of the image.  The image name is stored
+	in the database along with the user nick and the current date. (Note that this
+        prodecure doesn't handle the image file itself, it just stores a record of
+        the file in the database).
 	</li>
+
+    <li class="list-group-item">There is a procedure <code>add_like</code> which takes three arguments,
+        a database connection, the name of an image file and an optional usernick.  A record is
+        added to the database recording this like. If no usernick is supplied, the field is set
+        to None (NULL).  If the user is not known to the system (not in the users table) then
+        no action is taken.  If the named image does not exist in the database, no action is taken.
+    </li>
+
+    <li class="list-group-item">There is a procedure <code>count_likes</code> which takes two arguments,
+        a database connection and the name of an image file.  The procedure returns the total
+        number of likes (from any user or anonymous likes) for this image.  If the image does
+        not exist, the procedure returns 0.
+    </li>
  </ol>
- 
-  <div class='alert alert-danger'>
-	  <h3>Addendum</h3>
- 	<p>As an option to simplify the implementation you may choose to implement the following
-		procedure instead of <code>list_images</code>:</p>
-	
-	<ol>
-		<li>There is a procedure <code>list_only_images</code> that takes a two arguments, 
-		a database connection and a number  <code>n</code> and returns a list of 
-		the most recent <code>n</code> images that have been uploaded along with their details.  The return
-		value will be a list of tuples with one tuple per image, each tuple will contain four
-		elements: <code>(filename, date, useremail)</code>.  <code>filename</code> is the path 
-		to the image relative to the default image directory, <code>date</code> is a 
-		date string in the format YYYY-MM-DD, <code>useremail</code> is the email address of the owner
-		of the image. The images will be returned in reverse order of their date, 
-		with the newest image first.</li>
-	</ol>
-	
-	<p>Your code should implement one of these two procedures. Each comes with a unit test
-		(see the amended <code>level2_unit.py</code>) 
-	
-  </div>
- 
-  <p>The Starter Kit includes modules for page templating and creating and interfacing to
+
+  <p>The Starter Kit includes a module for creating and interfacing to
 		the database. These modules are <a href="modules.html">described here</a>. </p>
-	
 
 <h2>Your Task</h2>
 
 
-	<p>To achieve these requirements you will need to extend your WSGI application to 
+	<p>To achieve these requirements you will need to extend your application to
 	interface to the SQLite database and write code to pass the unit tests for the 
 	database interface. The techniques to do this are covered here:</p>
 
 	<ul>
-	    <li><a href="http://pwp.stevecassidy.net/wsgi/more-wsgi.html#title2">More on WSGI</a> describes handling form input in a WSGI script.</li>
+	    <li><a href="http://pwp.stevecassidy.net/bottle/forms-processing.html">Forms Processing</a>
+            describes handling form input in a Bottle application.</li>
 		<li><a href="http://pwp.stevecassidy.net/pythoncgi/pysqlite.html">Python and SQLite</a> describes the
 			way to send queries to SQLite and get results back.</li>
-		<li><a href="http://pwp.stevecassidy.net/wsgi/wsgi-sqlite.html">WSGI and SQLite</a> looks at using
-			SQLite databases as part of a WSGI appliication.</li>
+		<li><a href="http://pwp.stevecassidy.net/bottle/bottle-sqlite.html">Web Applications with SQLite</a> looks at using
+			SQLite databases as part of an appliication.</li>
 		<li><a href="http://pwp.stevecassidy.net/python/unittest.html">Testing Python Programs</a> covers
 			running unit tests.</li>
 	</ul>

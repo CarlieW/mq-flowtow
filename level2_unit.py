@@ -8,173 +8,115 @@ Version 2: adds test for list_only_images, a simplified version of list_images
 '''
 import unittest
 import datetime
+import random
 
 import interface
 from database import COMP249Db
 
 
-class LevelAUnitTests(unittest.TestCase):
-    
-    
+class Level2UnitTests(unittest.TestCase):
+
+
     def setUp(self):
         # open an in-memory database for testing
         self.db = COMP249Db(':memory:')
         self.db.create_tables()
-
-                #  email,         pass,   first,  last 
-        self.users = [('bob@here.com', 'bob', 'Bob', 'Bobalooba'),
-                 ('jim@there.com', 'jim', 'Jim', 'Jimminy'),
-                 ('mary@where.com', 'mary', 'Mary', 'Mary'),
-                 ('carol@everywhere.com', 'carol', 'Oh', 'Carol')]
-
-                # filename, date, useremail
-        self.images = [ 
-                   ('cycling.jpg',     '2014-01-14', 'bob@here.com'),
-                   ('window.jpg',      '2014-01-12', 'jim@there.com'),
-                   ('hang-glider.jpg', '2013-11-18', 'bob@here.com'),
-                   ('seashell.jpg',    '2013-07-01', 'mary@where.com')
-                 ]
-
-        self.comments = ['one', 'two', 'three']
-
-        # create sample data for testing
-        cursor = self.db.cursor()
-        for email, password, first, last in self.users:
-            sql = "INSERT INTO users VALUES (?, ?, ?, ?)"
-            cursor.execute(sql, (email, self.db.crypt(password), first, last))
-            
-        for fname, date, useremail in self.images:
-            sql = 'INSERT INTO images VALUES (?, ?, ?)'
-          
-            # now create the database entry for this image
-            cursor.execute(sql, (fname, date, useremail))
-            # and create some comments unless this is seashell
-            # which gets no comments so we can test that
-            if fname != 'seashell.jpg':
-                sql = "INSERT INTO comments VALUES (?, ?)"
-                for comment in self.comments:
-                    cursor.execute(sql, (fname, comment))
-                
-        # commit all updates to the database
-        self.db.commit()
+        self.db.sample_data()
+        self.images = self.db.images
+        self.users = self.db.users
 
 
-    def test_list_comments(self):
-        """Test that list_comments returns all comments on an image"""
-        
-        
-        # list comments should return the three comments we inserted
-        for image in self.images:
-            comments = interface.list_comments(self.db, image[0])
-            
-            if image[0] == 'seashell.jpg':
-                # should have no comments
-                self.assertEqual([], comments)
-            else:
-                self.assertEqual(len(self.comments), len(comments), "wrong number of comments")
-                # check that all comments are present
-                self.assertTrue(all([c in comments for c in self.comments]), "didn't find all comments")
-            
-        
-
-    def test_add_comment(self):
-        """Test that add_comment is able to add new comments"""
-        
-        image = 'seashell.jpg'
-        testcomment = 'she sells sea shells on the sea shore'
-
-        interface.add_comment(self.db, image, testcomment)
-        
-        # use list_comments to retrieve the comments, this assumes that list_comments works
-        
-        comments = interface.list_comments(self.db, image)
-        self.assertEqual(1, len(comments), "expected just one comment for seashell.jpg")
-        self.assertEqual(testcomment, comments[0])
-        
-        
 
     def test_list_images(self):
         """Test that list_images returns the right list of images"""
-        
+
         # get the four most recent image entries
         image_list = interface.list_images(self.db, 4)
-        
+
         self.assertEqual(4, len(image_list))
         # and all entries are four elements long
         self.assertTrue(all([len(i) == 4 for i in image_list]))
-        
-        refimages = self.images
-        
+
         # check that the images are in the right order
-        self.assertListEqual([img[0] for img in refimages], [img[0] for img in image_list])
-        
+        self.assertListEqual([img[0] for img in self.images], [img['filename'] for img in image_list])
+
         # and the dates are right
-        self.assertListEqual([img[1] for img in refimages], [img[1] for img in image_list])
-        
+        self.assertListEqual([img[1] for img in self.images], [img['timestamp'] for img in image_list])
+
         # and the owners
-        self.assertListEqual([img[2] for img in refimages], [img[2] for img in image_list])
-        
-        # now check the comments, should all be the same except the last one
-        for image in image_list[:3]:
-            self.assertListEqual(self.comments, image[3])
-        
-        self.assertEqual([], image_list[3][3], 'comment on last image should be empty')
-       
+        self.assertListEqual([img[2] for img in self.images], [img['user'] for img in image_list])
 
-    def test_list_only_images(self):
-        """Test that list_only_images returns the right list of images
-        Similar to list_images but does not include the comments.
-        """
-        
-        # get the four most recent image entries
-        image_list = interface.list_only_images(self.db, 4)
-        
-        self.assertEqual(4, len(image_list))
-        # and all entries are three elements long
-        self.assertTrue(all([len(i) == 3 for i in image_list]))
-        
-        refimages = self.images
-        
-        # check that the images are in the right order
-        self.assertListEqual([img[0] for img in refimages], [img[0] for img in image_list])
-        
-        # and the dates are right
-        self.assertListEqual([img[1] for img in refimages], [img[1] for img in image_list])
-        
-        # and the owners
-        self.assertListEqual([img[2] for img in refimages], [img[2] for img in image_list])
+        # now check the likes
+        for image in image_list:
+            likes = [img[3] for img in self.images if img[0] == image['filename']]
+            self.assertEqual(len(likes[0])+1, image['likes'])
 
 
-    
+
     def test_add_image(self):
         """Test that add_image updates the database properly"""
-        
+
         imagename = 'new.jpg'
-        useremail = 'carol@everywhere.com'
-        interface.add_image(self.db, imagename, useremail)
-        
-        # should be the first image listed here
-        # but we need to try both list_images and list_only_images
-        try:
-            images = interface.list_images(self.db, 1)
-        except:
-            images = None
-            
-        if images == None:
-            try:
-                images = interface.list_only_images(self.db, 1)
-            except:
-                self.fail("Tried both list_images and list_only_images and both failed")
-        
-        
-        self.assertEqual(imagename, images[0][0], 'wrong image name after add_image')
-        self.assertEqual(useremail, images[0][2], 'wrong email in first image')
-        # date should be todays
+        usernick = 'carol'
+        interface.add_image(self.db, imagename, usernick)
+
+        images = interface.list_images(self.db, 5)
+
+        self.assertEqual(imagename, images[0]['filename'], 'wrong image name after add_image')
+        self.assertEqual(usernick, images[0]['user'], 'wrong user in first image')
+        # date should be today's
         today = datetime.datetime.today().strftime("%Y-%m-%d")
-        date = images[0][1]
-        self.assertEqual(today, date)
-        
-        
+        date = images[0]['timestamp']
+        self.assertEqual(date[:10], today)
+
+
+    def test_count_likes(self):
+        """Test that count_likes correctly counts the likes for an image"""
+
+        for image in self.images:
+
+            count = interface.count_likes(self.db, image[0])
+
+            # expect the listed users plus one anonymous like
+            self.assertEqual(len(image[3])+1, count)
+
+
+        # for a non-existent image, count_likes returns zero
+
+        self.assertEqual(0, interface.count_likes(self.db, "imagethatdoesntexist.jpg"))
+
+
+
+    def test_add_like(self):
+        """Test that add_like can add a like either anonymously or from another user"""
+
+        filename = self.images[0][0]
+
+        # anonymous like
+        count = interface.count_likes(self.db, filename)
+
+        interface.add_like(self.db, filename)
+
+        self.assertEqual(count+1, interface.count_likes(self.db, filename), "anonymous like not added")
+
+        # a like from a user
+        interface.add_like(self.db, filename, self.users[3][1])
+
+        self.assertEqual(count+2, interface.count_likes(self.db, filename), "like for known user not added")
+
+        # like from an unknown user should not be stored
+        interface.add_like(self.db, filename, 'Imposter')
+
+        self.assertEqual(count+2, interface.count_likes(self.db, filename), "you counted like from unknown user")
+
+        # like of an unknown image should not be stored
+        interface.add_like(self.db, 'unknownfile.jpg', self.users[3][1])
+
+        self.assertEqual(0, interface.count_likes(self.db, 'unknownfile.jpg'), "you counted like from unknown file")
+
+
+
+
 
 
 if __name__ == "__main__":

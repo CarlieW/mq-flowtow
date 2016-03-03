@@ -77,14 +77,12 @@ CREATE TABLE images (
             FOREIGN KEY(usernick) REFERENCES users(nick)
 );
 
-DROP TABLE IF EXISTS comments;
-CREATE TABLE comments (
+DROP TABLE IF EXISTS likes;
+CREATE TABLE likes (
             filename text,
-            timestamp text default CURRENT_TIMESTAMP,
-            comment text,
             usernick text,
-            FOREIGN KEY(filename) REFERENCES images(filename),
-            FOREIGN KEY(usernick) REFERENCES users(nick)
+            FOREIGN KEY(usernick) REFERENCES users(nick),
+            FOREIGN KEY(filename) REFERENCES images(filename)
 );"""
 
         self.conn.executescript(sql)
@@ -108,11 +106,11 @@ CREATE TABLE comments (
 
 
         # filename, date, useremail, comments
-        images = [
-                   ('cycling.jpg',     '2015-02-20 01:45:06', 'bob', ['cool photo', 'thx']),
-                   ('window.jpg',      '2015-02-20 00:54:53', 'jim', []),
-                   ('hang-glider.jpg', '2015-02-19 20:43:48', 'bob', ['much wave', 'wow']),
-                   ('seashell.jpg',    '2015-02-19 19:03:22', 'mary', ['ahh, seashell!'])
+        self.images = [
+                   ('cycling.jpg',     '2015-02-20 01:45:06', 'Bobalooba', ['Bean', 'Barfoo', 'Mandible']),
+                   ('window.jpg',      '2015-02-20 00:54:53', 'Jimbulator', ['Bobalooba', 'Bean']),
+                   ('hang-glider.jpg', '2015-02-19 20:43:48', 'Bobalooba', ['Jimbulator', 'Barfoo']),
+                   ('seashell.jpg',    '2015-02-19 19:03:22', 'Contrary', [])
                  ]
 
 
@@ -123,17 +121,21 @@ CREATE TABLE comments (
             sql = "INSERT INTO users (nick, password, avatar) VALUES (?, ?, ?)"
             cursor.execute(sql, (nick, self.crypt(password), avatar))
 
-        for fname, date, nick, comments in images:
+        for fname, date, nick, likers in self.images:
             sql = 'INSERT INTO images (filename, timestamp, usernick) VALUES (?, ?, ?)'
 
             # now create the database entry for this image
             cursor.execute(sql, (fname, date, nick))
-            # and create some comments
-            sql = "INSERT INTO comments (filename, comment, usernick) VALUES (?, ?, ?)"
-            for comment in comments:
-                # choose a random user as the author of this comment
-                author = random.choice([u[1] for u in self.users])
-                cursor.execute(sql, (fname, comment, author))
+
+            # and create some likes for this image
+            sql = "INSERT INTO likes (filename, usernick) VALUES (?, ?)"
+
+            for user in likers:
+                cursor.execute(sql, (fname, user))
+
+            # and one anonymous like
+
+            cursor.execute(sql, (fname, None))
 
         # commit all updates to the database
         self.commit()

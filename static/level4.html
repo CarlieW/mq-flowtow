@@ -51,7 +51,10 @@
     <div class="container">
  
 	<h1>Level 4</h1>
-	
+
+        <p>&lt;&lt; <a href="level3.html">Level 3</a> </p>
+
+
 	 <h2>Functional requirements</h2>
 	  
 	  <p>Note that there are no automatic tests for this level. I've not yet found a way to
@@ -60,26 +63,27 @@
 	  
 	 <p>As for level three plus:</p>
 
-	 <ol>
-		<li>As a registered user, when I load the "My Images" page (http://localhost:8000/my) 
+	 <ul class="list-group">
+		<li class="list-group-item">As a registered user, when I load the "My Images" page
 			I see a form that has a file selection input and a button labelled "Upload Image".
 		<div  class='bg-info'>
 			<ul>
 				<li>The upload form will have the id <code>uploadform</code></li>
 				<li>The <code>action</code> attribute of the form will be <code>/upload</code></li>
+                <li>The file field in the form will have the name attribute <code>imagefile</code>.</li>
 			</ul>
 		</div>
 		</li>
 
-		<li>As a registered user, when I load the "My Images" page and select a file and then
+		<li class="list-group-item">As a registered user, when I load the "My Images" page and select a file and then
 			click on the "Upload Image" button my image file is uploaded to the site.  The
 			page that is returned is the "My Images" page and the newly uploaded
 			image is the first image on the page. </li>
 		
-		<li>As a registered user, after I have uploaded an image, when I load the 
-			home page, my new image appears as the first image in the page.</li>
+		<li class="list-group-item">As an unregistered user (not logged in) if I try to upload
+        an image by accessing the /upload URL directly, I get a redirect response back to the home page.</li>
 		
-	 </ol>
+	 </ul>
 	
 	 <h2>Your Task</h2>
 
@@ -90,7 +94,7 @@
 	<p>The following chapters in the notes may be useful:</p>
 	
 	<ul>
-		<li><a href="http://pwp.stevecassidy.net/wsgi/file-upload.html">Uploading Files</a>
+		<li><a href="http://pwp.stevecassidy.net/bottle/file-upload.html">Uploading Files</a>
 		</li>
 	</ul>
 

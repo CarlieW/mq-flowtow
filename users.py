@@ -4,7 +4,7 @@ Created on Mar 26, 2012
 @author: steve
 '''
 
-from http.cookies import SimpleCookie
+import bottle
 
 # this variable MUST be used as the name for the cookie used by this application
 COOKIE_NAME = 'sessionid'
@@ -25,20 +25,22 @@ def check_login(db, usernick, password):
 
 
 def generate_session(db, usernick):
-    """create a new session, return a cookie obj with session key
+    """create a new session and add a cookie to the response object (bottle.response)
     user must be a valid user in the database, if not, return None
     There should only be one session per user at any time, if there
-    is already a session active, the cookie should use the existing
-    sessionid
+    is already a session active, use the existing sessionid in the cookie
     """
 
     # test to see whether we have one already
     cursor = db.cursor()
     # first check that this is a valid user
     cursor.execute('select nick from users where nick=?', (usernick,))
-    if not cursor.fetchall():
+    row = cursor.fetchone()
+    if not row:
         # unknown user
         return None
+
+    usernick = row[0]
 
     cursor.execute('select sessionid from sessions where usernick=?', (usernick,))
     row = cursor.fetchone()
@@ -50,11 +52,10 @@ def generate_session(db, usernick):
         cursor.execute('insert into sessions (sessionid, usernick) values (?, ?)', (sessionid, usernick))
         db.commit()
 
-    # make the cookie to return
-    cookie = SimpleCookie()
-    cookie[COOKIE_NAME] = sessionid
+    # set the cookie in the response
+    bottle.response.set_cookie(COOKIE_NAME, sessionid)
 
-    return cookie
+    return sessionid
 
 
 def delete_session(db, usernick):
@@ -65,23 +66,20 @@ def delete_session(db, usernick):
     db.commit()
 
 
-def user_from_cookie(db, environ):
-    """check whether HTTP_COOKIE set, if it is,
-    and if our cookie is present, try to
-    retrieve the user email from the sessions table
+def session_user(db):
+    """try to
+    retrieve the user from the sessions table
     return usernick or None if no valid session is present"""
 
-    if 'HTTP_COOKIE' in environ:
-        cookie = SimpleCookie(environ['HTTP_COOKIE'])
-        if COOKIE_NAME in cookie:
-            sessionid = cookie[COOKIE_NAME].value
-            # look in the sessions table
-            cursor = db.cursor()
-            cursor.execute("select usernick from sessions where sessionid=?", (sessionid,))
+    sessionid = bottle.request.get_cookie(COOKIE_NAME)
 
-            row = cursor.fetchone()
-            if row:
-                return row[0]
+    # look in the sessions table
+    cursor = db.cursor()
+    cursor.execute("select usernick from sessions where sessionid=?", (sessionid,))
 
-    # we didn't find the session, so we can't say who this is
-    return None
+    row = cursor.fetchone()
+    if row:
+        return row[0]
+    else:
+        # we didn't find the session, so we can't say who this is
+        return None

@@ -7,16 +7,13 @@
     <meta name="description" content="">
     <meta name="author" content="">
 
-    <title>$title</title>
+    <title>{{title}}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
     <link href="/static/style.css" rel="stylesheet">
-
-    <!-- Just for debugging purposes. Don't actually copy this line! -->
-    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
 
     <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -36,36 +33,49 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">FlowTow</a>
+          <a class="navbar-brand" href="#">psst</a>
         </div>
         <div class="collapse navbar-collapse">
-          <ul class="nav navbar-nav">
-            <li><a href="/">Home</a></li>
-            <li><a href="/about">About</a></li>
-            <li><a href="/static/assignment.html">Assignment Spec</a></li>
-          </ul>
-		  
-		<form id='loginform' class="navbar-form navbar-right" role="login" method='post' action='/login'>
+            <ul class="nav navbar-nav">
+              <li><a href="/">Home</a></li>
+%if defined('user') and user is not None:
+              <li><a href="/my">My Images</a></li>
+% end
+              <li><a href="/users">Users</a></li>
+              <li><a href="/about">About</a></li>
+              <li><a href="/static/assignment.html">Assignment Spec</a></li>
+            </ul>
+
+%if defined('user') and user is not None:
+            <form id='logoutform' class="navbar-form navbar-right pull-right" role="logout" method='post' action='/logout'>
+                <input type="submit" class="btn btn-default" name='logout' value='Logout' >
+            </form>
+
+            <div class="navbar-text navbar-right pull-right">Logged in as {{user}}</div>
+
+% else:
+            <form id='loginform' class="navbar-form navbar-right" role="login" method='post' action='/login'>
 		        <div class="form-group">
-		          <input type="text" name='email' class="form-control" placeholder="Email">
+		          <input type="text" name='nick' class="form-control" placeholder="Username">
 		        </div>
 		        <div class="form-group">
 		          <input type="password" name='password' class="form-control" placeholder="Password">
-		        </div>				
+		        </div>
 		        <input type="submit" class="btn btn-default" value='Login' >
-		</form>
+		    </form>
+% end
         </div><!--/.nav-collapse -->
       </div>
     </div>
 
     <div class="container">
-    	
-		<h1>$title</h1>
-		<p class='alert alert-info'>(This version implements Level 4 of the requirements.)</p>
-		
-		$content 
 
-    </div><!-- /.container -->
+        <div class="header">
+            <h1></h1>
+        </div>
+		    {{!base}}
+
+    </div>
 
 
     <!-- Bootstrap core JavaScript

@@ -4,118 +4,140 @@ Created on Mar 3, 2014
 @author: steve
 '''
 import unittest
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
-import datetime
+import webtest
+import bottle
 import os
 
-import interface
-from urllib.request import urlopen
+import main
+from database import COMP249Db
+
 
 class Level3FunctionalTests(unittest.TestCase):
 
-    base_url = 'http://localhost:8000/'
-    
     def setUp(self):
-        self.driver = webdriver.Firefox()
-        self.driver.implicitly_wait(3)
+        self.app = webtest.TestApp(main.application)
+        self.db = COMP249Db()
+        self.db.create_tables()
+        self.db.sample_data()
+        self.users = self.db.users
+        bottle.debug() # force debug messages in error pages returned by webtest
+
 
     def tearDown(self):
-        self.driver.close()
-            
+        # reset the database to a default state
+        self.db.create_tables()
+        self.db.sample_data()
+
+
     def doLogin(self, email, password):
-        """Perform a login with some validation along the way"""
-        
-        driver = self.driver
-        
-        # there is a form with id='loginform'
-        try:
-            loginform = driver.find_element_by_id('loginform')
-        except NoSuchElementException:
-            self.fail("no form with id='loginform' found")
- 
-        # login form action should be /login
-        self.assertEqual(self.base_url + 'login', loginform.get_attribute('action'), "login form action should be '/login'")
- 
-        # the form has an email field
-        try:
-            emailfield = loginform.find_element_by_name('email')
-        except NoSuchElementException:
-            self.fail("no email field found for login form")
-        
-        # and a password field
-        try: 
-            passwordfield = loginform.find_element_by_name('password')
-        except NoSuchElementException:
-                self.fail("no password field found for login form")
-                
-        self.assertEqual(passwordfield.get_attribute('type'), 'password', "Password field should have type='password'")                
-                
-        emailfield.send_keys(email)
-        passwordfield.send_keys(password)
-        # submit the form
-        loginform.submit()
-        
-                        
-                
+        """Perform a login,
+         returns the response to the login request"""
 
-    def testMyImages(self):
-        """As a registered user, when I load the "My Images" page (http://localhost:8000/my) I see 
-        a form that has a file selection input and a button labelled "Upload Image". 
-        
-        As a registered user, when I load the "My Images" page and select a file and then click 
-        on the "Upload Image" button my image file is uploaded to the site. The page that is 
-        returned is the "My Images" page and the newly uploaded image is the first image on the page.
-        
+        response = self.app.get('/')
+
+        loginform = response.forms['loginform']
+
+        loginform['nick'] = email
+        loginform['password'] = password
+
+        return loginform.submit()
+
+
+    def testMyImagesForm(self):
+        """As a registered user, when I load the "My Images" page I see a form that has
+         a file selection input and a button labelled "Upload Image".
         """
-        
-        driver = self.driver
-        driver.get(self.base_url)
-         
-        # fill out the form
-        email = 'bob@here.com'
-        password = 'bob'
-        
-        self.doLogin(email, password)
-        
-        # expect to see link to my images
-        try:
-            imagelink = driver.find_element_by_link_text('My Images')        
-        except NoSuchElementException:
-            self.fail("can't find link to My Images page")
-            
-        imagelink.click()
-        
-        # find a file upload form
-        try:
-            form = driver.find_element_by_id('uploadform')
-        except NoSuchElementException:
-            self.fail("No form found with id='uploadform")
 
-        self.assertEqual(self.base_url + 'upload', form.get_attribute('action'), "upload form action should be '/upload'")
+        imagefilename = "iceland.jpg"
 
-        try:
-            fileinput = form.find_element_by_tag_name('input')
-        except NoSuchElementException:
-            self.fail("No input field in upload form")
+        (password, nick, avatar) = self.users[0]
 
-        self.assertEqual(fileinput.get_attribute('type'), 'file')
+        # login and then get the my images page
+        self.doLogin(nick, password)
+        response = self.app.get('/my')
 
-        # now try uploading a file
-        fileinput.click()
-        newimage = os.path.join(os.path.dirname(__file__), "flower.jpg")
-        fileinput.send_keys(newimage)
-        form.submit()
-    
-        # now need to check that our image appears first in the page
-        
-        divs = driver.find_elements_by_class_name('flowtow')
-        
-        self.assertGreater(1, len(divs), "expected at least one 'flowtow' div in page")
-        
-        img = divs[0].find_elements_by_tag_name('img')
-        self.assertEqual("flower.jpg", img.get_attribute('src'))
+        # the page should contain an upload form
+        self.assertIn('uploadform', response.forms)
+
+        form = response.forms['uploadform']
+        # action should be /upload
+        self.assertEqual('/upload', form.action)
+
+        # try uploading a file
+        form['imagefile'] = webtest.Upload(imagefilename, content_type='image/jpeg')
+
+        response = form.submit()
+
+        # expect a redirect to the /my page
+
+        self.assertEqual('303 See Other', response.status)
+        self.assertEqual('/my', response.headers['Location'])
+
+        # and when I retrieve that page I see my image at the top
+        response = self.app.get('/my')
+
+        flowtows = response.html.find_all(class_='flowtow')
+        # should find my image in the first one
+        div = flowtows[0]
+        img = div.find("img")
+        # should be the image src attribute
+        self.assertIn(imagefilename, img['src'])
+
+        # and we should be able to retrieve it
+        response = self.app.get(img['src'])
+
+        self.assertEqual("200 OK", response.status)
+
+        # remove the uploaded image
+        os.unlink('static/images/iceland.jpg')
+
+    def testMyImagesFormNoLogin(self):
+        """ As an unregistered user (not logged in) if I try to upload an image by
+        accessing the /upload URL directly, I get a redirect response back to the home page.
+
+        """
+
+        imagefilename = "iceland.jpg"
+
+        (password, nick, avatar) = self.users[0]
+
+        # login and then get the my images page
+        self.doLogin(nick, password)
+        response = self.app.get('/my')
+
+        # the page should contain an upload form
+        self.assertIn('uploadform', response.forms)
+
+        form = response.forms['uploadform']
+        # action should be /upload
+        self.assertEqual('/upload', form.action)
+
+        # try uploading a file
+        form['imagefile'] = webtest.Upload(imagefilename, content_type='image/jpeg')
+
+
+        # before we submit, we'll logout
+
+        logoutform = response.forms['logoutform']
+        response3 = logoutform.submit()
+
+        # now submit the form as a regular user
+
+        response = form.submit()
+
+        # expect a redirect to the / page
+
+        self.assertEqual('303 See Other', response.status)
+        self.assertEqual('/', response.headers['Location'], "expected redirect to '/' after non-login file upload")
+
+        # and when I retrieve that page I should not see the image
+        response = self.app.get('/')
+
+        imgs = response.html.find_all('img')
+        for img in imgs:
+           self.assertNotIn(imagefilename, img['src'], "found image that should not have uploaded")
+
+
 
 
 if __name__ == "__main__":
