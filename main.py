@@ -16,7 +16,7 @@ from database import COMP249Db
 COOKIE_NAME = 'sessionid'
 
 application = Bottle()
-
+debug()
 
 @application.route('/static/<filename:path>')
 def static(filename):
