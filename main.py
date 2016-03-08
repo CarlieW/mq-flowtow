@@ -37,7 +37,7 @@ def index():
     info = {}
 
     info['user'] = users.session_user(db)
-    info['title'] = "¡Welcome to FlowTow!"
+    info['title'] = "Welcome to FlowTow!"
 
     info['images'] = interface.list_images(db, 3)
 
