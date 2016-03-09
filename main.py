@@ -10,8 +10,9 @@ import users
 from database import COMP249Db
 
 # for deployment we need to make sure we're in the right directory
-#import os
-#os.chdir(os.path.dirname(__file__))
+import os
+if not __name__=='__main__':
+    os.chdir(os.path.dirname(__file__))
 
 COOKIE_NAME = 'sessionid'
 
