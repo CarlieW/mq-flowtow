@@ -50,74 +50,79 @@
 
     <div class="container">
 
- <h1>Python Modules</h1>
+ <h1>The Database</h1>
 
- <p>This document describes the SQL database that you will be using and a number of
- Python modules that we have supplied.  In one case, <code>interface.py</code> you
- need to complete the implementation yourself.</p>
+ <p>This document describes the SQL database that you will be using and the code that
+ we have written to support creating the database and some sample data that you can
+ use for testing.</p>
 
-<h2>The Database</h2>
-
- <p>The database used by the application consists of three simple
+ <p>The database used by the application consists of four simple
  tables: users, sessions and comments.  These are defined by the
  following SQL:</p>
 
  <pre class='code'>
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
-           email text unique primary key,
+           nick text unique primary key,
            password text,
-           nick text,
            avatar text
 );
 
 DROP TABLE IF EXISTS sessions;
 CREATE TABLE sessions (
             sessionid text unique primary key,
-            useremail text,
-            FOREIGN KEY(useremail) REFERENCES users(email)
+            usernick text,
+            FOREIGN KEY(usernick) REFERENCES users(nick)
 );
 
 DROP TABLE IF EXISTS images;
 CREATE TABLE images (
             filename text unique primary key,
-            date text,
-            useremail text,
-            FOREIGN KEY(useremail) REFERENCES users(email)
+            timestamp text default CURRENT_TIMESTAMP,
+            usernick text,
+            FOREIGN KEY(usernick) REFERENCES users(nick)
 );
 
-DROP TABLE IF EXISTS comments;
-CREATE TABLE comments (
+DROP TABLE IF EXISTS likes;
+CREATE TABLE likes (
             filename text,
-            comment text,
+            usernick text,
+            FOREIGN KEY(usernick) REFERENCES users(nick),
             FOREIGN KEY(filename) REFERENCES images(filename)
 ); </pre>
 
-<p>The users table will contain records for each user, they are identified by
-an email address which is the primary key for the table and we also store a nick (short name)
-and an avatar for each user.  The password field stores an encrypted version of the
+<p>The <code>users</code> table will contain records for each user, they are identified by
+a nickname is the primary key for the table and we also store an avatar URL for each user (not
+    used in the defined requirements but available for possible extensions).
+    The password field stores an encoded version of the
 password (a web application should never store a password in plain text in case the
-database is compromised).  The encryption method used is provided as the <code>crypt</code> method of
+database is compromised).  The encoding method used is provided as the <code>encode</code> method of
 the COMP249Db class (see below).</p>
 
-<p>The sessions table is used to store session keys generated for users when they
-login to the web application.  The <code>useremail</code> field is a foreign key that
-references the email field in the users table.</p>
+<p>The <code>sessions</code> table is used to store session keys generated for users when they
+login to the web application.  The <code>usernick</code> field is a foreign key that
+references the nick field in the users table.</p>
 
-<p>The images table stores the images that have been uploaded - or rather it stores the
-	names of the image files that have been uplaoded. The images themselves will be stored
-	on the filesystem.  Along with each image is a date field recording the day that the
-	image was uploaded and a useremail field recording who uploaded the image.</p>
+<p>The <code>images</code> table stores the images that have been uploaded - or rather it stores the
+	names of the image files that have been uploaded. The images themselves will be stored
+	on the filesystem.  Along with each image is a timestamp field recording the time that the
+	image was uploaded and a <code>usernick</code> field recording who uploaded the image.
+    The <code>timestamp</code> field is set to default to the current time so you don't need
+    to give it an explicit value.</p>
 
-<p>The comments table stores the comments on images, the <code>filename</code> field references
-	the same field in the images table. </p>
+<p>The <code>likes</code> table stores the likes for images, the <code>filename</code> field references
+	the same field in the images table, the <code>usernick</code> field references the <code>nick</code> field
+in the users table.  For an anonymous like, the nick field can be NULL. The current
+requirements don't say anything about differentiating anonymous and user likes or
+making sure that a user only likes an image once - these would be possible extensions
+you could consider.</p>
 
 <h2>The <tt>database.py</tt> Module</h2>
 
  <p><strong>Note that you should not modify this module when writing
- your application. It is important that you are using the same database
- schema so that the unit tests will work. If you want to include new
- database interface code, put it in another module.</strong></p>
+ your application (up to Level 4). It is important that you are using the same database
+ schema so that the unit tests will work.</strong>  For Level 5, you may make changes
+ that are fully documented.</p>
 
  <p>
   This module contains an interface to the SQLite3 database module that
@@ -161,9 +166,8 @@ your database will be reset on each request.</p>
   method to generate a cursor:
  </p>
 
- <pre class="code">def list_images(db, n):
-    """Return a list of tuples for the first 'n' images in 
-    order of date.  Tuples should contain (filename, date, useremail, comments)."""
+ <pre class="code">def list_images(db, n, usernick=None):
+    """Return a list of dictionaries for the first 'n' images in..."""
 
     cursor = db.cursor()
     cursor.execute('SELECT something  FROM somewhere')
@@ -180,47 +184,37 @@ your database will be reset on each request.</p>
 
  <p>
   The COMP249Db class also provides a utility method
-  <code>crypt</code>
+  <code>encode</code>
   that can be used to encode a password or generate a unique identifier
   for a user's session cookie.
-  <code>crypt</code>
+  <code>encode</code>
   uses the
-  <code>hashlib.sha1</code>
-  module to generate a one way hash of the string given to it. This hash
+  <code>hashlib.pbkdf2_hmac</code>
+  procedure to generate a one way hash of the string given to it (more info
+     on <a href="https://en.wikipedia.org/wiki/PBKDF2">PBKDF2</a>). This hash
   will always be the same given the same input, so can be used to encode
   a password for storing in the database. When you get a password from
   the user, you first encode it with the
-  <code>crypt</code>
+  <code>encode</code>
   method, and then compare it with the database. Here's an example:
  </p>
  <pre class="code">    storedpw = get the password from the database
     password = get the password from the user request (form)
-    if storedpw == db.crypt(password)
+    if storedpw == db.encode(password)
        # they match
     else:
        # they don't match
     </pre>
  <p>
   Similarly, the
-  <code>crypt</code>
+  <code>encode</code>
   method can be used to generate a suitable session id by encoding the
   user email. This will always be the same for each user which is
   appropriate for this application.
  </p>
 
- <h2>The <tt>interface.py</tt> Module</h2>
-
-  <p>You will write the procedures in this module to pass the tests in level2_unit.py.  The procedure
-  definition lines and documentation strings have been entered for you. You need to write the body
-  of the procedures to make the tests pass.</p>
 
 
- <h2 id='template'>The <tt>templating.py</tt> Module</h2>
-
-<p>This module contains the definition of a simple templating engine as described
-	in the <a href="http://pwp.stevecassidy.net/wsgi/templating.html">online python notes</a>.
-	A sample template is included in the <code>templates</code> subdirectory and is used
-	by the sample WSGI procedure in <code>main.py</code>.</p>
 
 </div>
     <footer class='footer'>

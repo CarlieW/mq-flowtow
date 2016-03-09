@@ -39,13 +39,15 @@ class COMP249Db():
         pass
 
 
-    def crypt(self, password):
+    def encode(self, password):
         """Return a one-way hashed version of the password suitable for
         storage in the database"""
 
-        import hashlib
+        import hashlib, binascii
 
-        return hashlib.sha1(password.encode()).hexdigest()
+        salt = b'salt should be a random string'
+        dk = hashlib.pbkdf2_hmac('sha256', bytes(password, 'utf-8'), salt, 100000)
+        return binascii.hexlify(dk).decode('utf-8')
 
 
     def create_tables(self):
@@ -119,7 +121,7 @@ CREATE TABLE likes (
         # create one entry for each user
         for password, nick, avatar in self.users:
             sql = "INSERT INTO users (nick, password, avatar) VALUES (?, ?, ?)"
-            cursor.execute(sql, (nick, self.crypt(password), avatar))
+            cursor.execute(sql, (nick, self.encode(password), avatar))
 
         for fname, date, nick, likers in self.images:
             sql = 'INSERT INTO images (filename, timestamp, usernick) VALUES (?, ?, ?)'

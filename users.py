@@ -19,7 +19,7 @@ def check_login(db, usernick, password):
     if row:
         # check that password matches
         storedpw = row[0]
-        return storedpw == db.crypt(password)
+        return storedpw == db.encode(password)
     else:
         return False
 
@@ -47,7 +47,7 @@ def generate_session(db, usernick):
     if row:
         sessionid = row[0]
     else:
-        sessionid = db.crypt(usernick)
+        sessionid = db.encode(usernick)
         # insert a new row into session table
         cursor.execute('insert into sessions (sessionid, usernick) values (?, ?)', (sessionid, usernick))
         db.commit()

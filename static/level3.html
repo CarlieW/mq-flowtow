@@ -189,8 +189,8 @@
 	<li class="list-group-item">There is a procedure <code>check_login</code> in the <code>users</code> module
 		that takes three arguments, a database connection, a user nick and a password, and returns
 		True if the password is correct for this user and False otherwise.
-		Note that the password is stored in the database in encrypted form.
-		You can use the method <code>db.crypt(text)</code> to encrypt
+		Note that the password is stored in the database in encoded form.
+		You can use the method <code>db.encode(text)</code> to encode
 		a password (where <code>db</code> is a database connection).</li>
 
 	<li class="list-group-item">There is a procedure <code>generate_session</code> in the <code>users</code> module
