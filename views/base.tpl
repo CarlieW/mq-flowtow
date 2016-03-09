@@ -33,7 +33,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">psst</a>
+          <a class="navbar-brand" href="#">FlowTow</a>
         </div>
         <div class="collapse navbar-collapse">
             <ul class="nav navbar-nav">
@@ -41,7 +41,6 @@
 %if defined('user') and user is not None:
               <li><a href="/my">My Images</a></li>
 % end
-              <li><a href="/users">Users</a></li>
               <li><a href="/about">About</a></li>
               <li><a href="/static/assignment.html">Assignment Spec</a></li>
             </ul>
