@@ -45,10 +45,13 @@ class COMP249Db():
 
         import hashlib, binascii
 
-        salt = b'salt should be a random string'
-        dk = hashlib.pbkdf2_hmac('sha256', bytes(password, 'utf-8'), salt, 100000)
-        return binascii.hexlify(dk).decode('utf-8')
-
+        try:
+            salt = b'salt should be a random string'
+            dk = hashlib.pbkdf2_hmac('sha256', bytes(password, 'utf-8'), salt, 100000)
+            return binascii.hexlify(dk).decode('utf-8')
+        except:
+            # if we don't have the pbkdf2_hmac module
+            return hashlib.sha512(password.encode()).hexdigest()
 
     def create_tables(self):
         """Create and initialise the database tables
