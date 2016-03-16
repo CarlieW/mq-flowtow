@@ -179,10 +179,10 @@
 	<li class="list-group-item">
         In the <code>interface.py</code> module, the procedure <code>list_images</code> has a third
         optional argument added called <code>usernick</code> with a default value of <code>NULL</code>
-        (ie. <code>def list_images(db, image, usernick=NULL)</code>).  If usernick is supplied, only
+        (ie. <code>def list_images(db, image, usernick=NULL)</code>).  If <code>usernick</code> is supplied, only
         the most recent <code>n</code> images from that user are returned in the result.
         The format of the result is unchanged. If
-        usernick is not supplied, the behaviour is as before (most recent <code>n</code> images are returned).
+        <code>usernick</code> is not supplied, the behaviour is as before (most recent <code>n</code> images are returned).
     </li>
 
 
@@ -225,7 +225,7 @@
 
 	<p>To achieve these requirements you will need to implement the new procedures
 		in <code>interface.py</code> and <code>users.py</code> and then make
-		use of these to extend your WSGI application to support user login.</p>
+		use of these to extend your application to support user login.</p>
 		
 	<p>This may seem like a huge task but the number of features and tests listed
 		above are there to make your job as clear as possible.   Take each
@@ -236,7 +236,7 @@
 	<p>The following chapters in the notes may be useful:</p>
 	
 	<ul>
-		<li><a href="http://pwp.stevecassidy.net/wsgi/sessions.html">Session Management</a>
+		<li><a href="http://pwp.stevecassidy.net/bottle/sessions.html">Session Management</a>
 			covers using cookies and a sessions table to create user sessions.</li>
 	    <li><a href="http://pwp.stevecassidy.net/bottle/forms-processing.html">Forms Processing</a>
             describes handling form input in a Bottle application.</li>
