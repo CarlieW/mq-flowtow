@@ -5,10 +5,9 @@ Created on Mar 3, 2014
 '''
 import unittest
 import webtest
-import datetime
+from urllib.parse import urlparse
 
 import main
-import interface
 import users
 from database import COMP249Db
 
@@ -78,9 +77,10 @@ class Level3FunctionalTests(unittest.TestCase):
 
         response = self.doLogin(nick, password)
 
-        # the response is a redirect to the main page
-        self.assertEqual('303 See Other', response.status)
-        self.assertEqual('/', response.headers['Location'])
+        # response should be a redirect to the main page
+        self.assertIn(response.status, ['303 See Other', '302 Found'])
+        (_, _, path, _, _, _) = urlparse(response.headers['Location'])
+        self.assertEqual('/', path)
 
         # The response also includes a cookie with the name
         # sessionid that contains some kind of random string.
@@ -144,8 +144,10 @@ class Level3FunctionalTests(unittest.TestCase):
 
         response3 = logoutform.submit()
         # response should be a redirect
-        self.assertEqual('303 See Other', response3.status)
-        self.assertEqual('/', response3.headers['Location'])
+        self.assertIn(response3.status, ['303 See Other', '302 Found'])
+        (_, _, path, _, _, _) = urlparse(response3.headers['Location'])
+        self.assertEqual('/', path)
+
 
         response4 = self.app.get('/')
         # should see login form again

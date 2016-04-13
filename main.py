@@ -4,7 +4,7 @@ Created on Mar 4, 2014
 @author: steve
 '''
 
-from bottle import Bottle, template, static_file, request, response, HTTPError, debug
+from bottle import Bottle, template, static_file, request, response, HTTPError, debug, redirect
 import interface
 import users
 from database import COMP249Db
@@ -77,11 +77,8 @@ def like():
     usernick = users.session_user(db)
     interface.add_like(db, filename, usernick)
 
+    redirect('/')
 
-    # respond with a redirect to the home page
-    response.status = 303
-    response.set_header('Location', '/')
-    return "Redirect"
 
 
 @application.post('/login')
@@ -97,9 +94,8 @@ def login():
 
         users.generate_session(db, nick)
 
-        response.status = 303
-        response.set_header('Location', '/')
-        return "Redirect"
+        redirect('/')
+
     else:
         return template('general', title='Login Error', content='Login Failed, please try again')
 
@@ -112,9 +108,7 @@ def logout():
     usernick = users.session_user(db)
     users.delete_session(db, usernick)
 
-    response.status = 303
-    response.set_header('Location', '/')
-    return "Redirect"
+    redirect('/')
 
 
 

@@ -6,9 +6,9 @@ Created on Mar 3, 2014
 import unittest
 import webtest
 import re
+from urllib.parse import urlparse
 
 import main
-import interface
 from database import COMP249Db
 
 class Level2FunctionalTests(unittest.TestCase):
@@ -86,8 +86,9 @@ class Level2FunctionalTests(unittest.TestCase):
                 formresponse = form.submit()
 
                 # response should be a redirect to the main page
-                self.assertEqual('303 See Other', formresponse.status)
-                self.assertEqual('/', formresponse.headers['Location'])
+                self.assertIn(formresponse.status, ['303 See Other', '302 Found'])
+                (_, _, path, _, _, _) = urlparse(formresponse.headers['Location'])
+                self.assertEqual('/', path)
 
                 # and the main page should now have one more like for this image
                 newresponse = self.app.get('/')
