@@ -22,6 +22,7 @@ class Level1FunctionalTests(unittest.TestCase):
          home page I see a banner with "Welcome to FlowTow"."""
 
         result = self.app.get('/')
+        print(result)
         self.assertIn("Welcome to FlowTow", result)
 
 
