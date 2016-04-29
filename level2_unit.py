@@ -65,7 +65,7 @@ class Level2UnitTests(unittest.TestCase):
         self.assertEqual(imagename, images[0]['filename'], 'wrong image name after add_image')
         self.assertEqual(usernick, images[0]['user'], 'wrong user in first image')
         # date should be today's
-        today = datetime.datetime.today().strftime("%Y-%m-%d")
+        today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
         date = images[0]['timestamp']
         self.assertEqual(date[:10], today)
 

@@ -7,6 +7,7 @@ import unittest
 import webtest
 import bottle
 import os
+from urllib.parse import urlparse
 
 import main
 from database import COMP249Db
@@ -70,8 +71,9 @@ class Level3FunctionalTests(unittest.TestCase):
 
         # expect a redirect to the /my page
 
-        self.assertEqual('303 See Other', response.status)
-        self.assertEqual('/my', response.headers['Location'])
+        self.assertIn(response.status, ['303 See Other', '302 Found'])
+        (_, _, path, _, _, _) = urlparse(response.headers['Location'])
+        self.assertEqual('/my', path)
 
         # and when I retrieve that page I see my image at the top
         response = self.app.get('/my')
@@ -126,9 +128,9 @@ class Level3FunctionalTests(unittest.TestCase):
         response = form.submit()
 
         # expect a redirect to the / page
-
-        self.assertEqual('303 See Other', response.status)
-        self.assertEqual('/', response.headers['Location'], "expected redirect to '/' after non-login file upload")
+        self.assertIn(response.status, ['303 See Other', '302 Found'])
+        (_, _, path, _, _, _) = urlparse(response.headers['Location'])
+        self.assertEqual('/', path,  "expected redirect to '/' after non-login file upload")
 
         # and when I retrieve that page I should not see the image
         response = self.app.get('/')

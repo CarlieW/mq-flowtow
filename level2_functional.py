@@ -123,7 +123,7 @@ def get_page_likes(response):
         # find the likes element
         likesel = div.find(class_='likes')
         # grab the integer from this element
-        m = re.match('\d+', likesel.text)
+        m = re.search('\d+', likesel.text)
         if m:
             likes = int(m.group())
         else:
