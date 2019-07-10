@@ -4,23 +4,39 @@ Created on Mar 3, 2014
 @author: steve
 '''
 import unittest
-import webtest
+from webtest import TestApp
 from urllib.parse import urlparse
 
+import bottle
+from bottle.ext import sqlite, beaker
+import os
+import sqlite3
+
 import main
-import users
-from database import COMP249Db
+
+import database
+
+
+DATABASE_NAME = "test.db"
+main.app.install(sqlite.Plugin(dbfile=DATABASE_NAME))
+
+# make sure bottle looks for templates in the main directory, not this one
+bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(__file__), p) for p in ['../', '../views/']]
 
 
 class Level3FunctionalTests(unittest.TestCase):
 
     def setUp(self):
-        self.app = webtest.TestApp(main.application)
-        self.db = COMP249Db()
-        self.db.create_tables()
-        self.db.sample_data()
-        self.users = self.db.users
 
+        session_opts = {
+            'session.type': 'memory',
+        }
+        beaker_app = beaker.middleware.SessionMiddleware(main.app, session_opts)
+        db = sqlite3.connect(DATABASE_NAME)
+        database.create_tables(db)
+        self.users, self.images = database.sample_data(db)
+        self.app = TestApp(beaker_app)
+        bottle.debug() # force debug messages in error pages returned by webtest
 
     def tearDown(self):
         pass
@@ -85,8 +101,8 @@ class Level3FunctionalTests(unittest.TestCase):
         # The response also includes a cookie with the name
         # sessionid that contains some kind of random string.
 
-        self.assertIn(users.COOKIE_NAME, self.app.cookies)
-        sessionid = self.app.cookies[users.COOKIE_NAME]
+        self.assertIn('beaker.session.id', self.app.cookies)
+        sessionid = self.app.cookies['beaker.session.id']
 
     def testLoginError(self):
         """As a registered user, when I enter my email address but get my
@@ -105,7 +121,7 @@ class Level3FunctionalTests(unittest.TestCase):
         self.assertIn("Failed", response)
 
         # Should not have a cookie
-        self.assertNotIn(users.COOKIE_NAME, self.app.cookies)
+        self.assertNotIn('beaker.session.id', self.app.cookies)
 
 
     def testLoginPagesLogoutForm(self):
@@ -193,14 +209,6 @@ class Level3FunctionalTests(unittest.TestCase):
 
             # check for a comment form
             self.assertGreater(len(div.find_all('form')), 0)
-
-            # can we actually get the image
-            # find the URL
-            url = img[0]['src']
-            # try requesting it and test the content-type header returned
-            resp = self.app.get(url)
-            self.assertEqual('image/jpeg', resp.content_type)
-
 
 
 if __name__ == "__main__":

@@ -4,25 +4,43 @@ Created on Mar 3, 2014
 @author: steve
 '''
 import unittest
-import webtest
+from webtest import TestApp
 import re
 from urllib.parse import urlparse
 
+import bottle
+from bottle.ext import sqlite, beaker
+import os
+import sqlite3
+
 import main
-from database import COMP249Db
+
+import database
+
+
+DATABASE_NAME = "test.db"
+main.app.install(sqlite.Plugin(dbfile=DATABASE_NAME))
+
+# make sure bottle looks for templates in the main directory, not this one
+bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(__file__), p) for p in ['../', '../views/']]
+
 
 class Level2FunctionalTests(unittest.TestCase):
 
     def setUp(self):
-        self.app = webtest.TestApp(main.application)
-        self.db = COMP249Db()
-        self.db.create_tables()
-        self.db.sample_data()
 
+        session_opts = {
+            'session.type': 'memory',
+        }
+        beaker_app = beaker.middleware.SessionMiddleware(main.app, session_opts)
+        db = sqlite3.connect(DATABASE_NAME)
+        database.create_tables(db)
+        self.users, self.images = database.sample_data(db)
+        self.app = TestApp(beaker_app)
+        bottle.debug() # force debug messages in error pages returned by webtest
 
     def tearDown(self):
         pass
-
 
     def testImagesPresent(self):
         """As a visitor to the site, when I load the home page I
@@ -38,7 +56,7 @@ class Level2FunctionalTests(unittest.TestCase):
 
         flowtows = result.html.find_all(class_='flowtow')
 
-        image_list = self.db.images
+        image_list = self.images
 
         self.assertEqual(3, len(flowtows))
 
@@ -55,14 +73,6 @@ class Level2FunctionalTests(unittest.TestCase):
             # look for just one image
             img = div.find_all('img')
             self.assertEqual(1, len(img))
-
-            # can we actually get the image
-            # find the URL
-            url = img[0]['src']
-            # try requesting it and test the content-type header returned
-            newresult = self.app.get(url)
-            self.assertEqual('image/jpeg', newresult.content_type)
-
 
     def testLikeImage(self):
         """As a visitor to the site, when I click on "Like" below an image,

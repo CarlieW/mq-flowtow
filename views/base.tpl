@@ -42,7 +42,6 @@
               <li><a href="/my">My Images</a></li>
 % end
               <li><a href="/about">About</a></li>
-              <li><a href="/static/assignment.html">Assignment Spec</a></li>
             </ul>
 
 %if defined('user') and user is not None:
@@ -50,7 +49,7 @@
                 <input type="submit" class="btn btn-default" name='logout' value='Logout' >
             </form>
 
-            <div class="navbar-text navbar-right pull-right">Logged in as {{user}}</div>
+            <div class="navbar-text navbar-right pull-right">Logged in as {{user['nick']}}</div>
 
 % else:
             <form id='loginform' class="navbar-form navbar-right" role="login" method='post' action='/login'>

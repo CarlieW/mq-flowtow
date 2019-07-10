@@ -1,5 +1,4 @@
 % rebase('base.tpl')
-% import interface
 
 <div class="container-fluid">
 
@@ -9,7 +8,8 @@
            <div class="panel panel-default">
                <div class="panel-heading">
                    % if user is not None:
-                    <h2>Welcome to FlowTow {{user}}</h2>
+                    <h2>Welcome to FlowTow {{user['nick']}}</h2>
+                   <img src="{{user['avatar']}}" alt="{{user['nick']}} avatar image">
                    % else:
                      <h2>Welcome to FlowTow</h2>
                    % end

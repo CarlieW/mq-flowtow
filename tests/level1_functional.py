@@ -7,11 +7,32 @@ import unittest
 from webtest import TestApp
 import main
 import bottle
+from bottle.ext import sqlite, beaker
+import sqlite3
+import os
+
+import database
+
+
+DATABASE_NAME = "test.db"
+main.app.install(sqlite.Plugin(dbfile=DATABASE_NAME))
+
+# make sure bottle looks for templates in the main directory, not this one
+bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(__file__), p) for p in ['../', '../views/']]
+
 
 class Level1FunctionalTests(unittest.TestCase):
 
     def setUp(self):
-        self.app = TestApp(main.application)
+
+        session_opts = {
+            'session.type': 'memory',
+        }
+        beaker_app = beaker.middleware.SessionMiddleware(main.app, session_opts)
+        db = sqlite3.connect(DATABASE_NAME)
+        database.create_tables(db)
+        database.sample_data(db)
+        self.app = TestApp(beaker_app)
         bottle.debug() # force debug messages in error pages returned by webtest
 
     def tearDown(self):
@@ -22,9 +43,7 @@ class Level1FunctionalTests(unittest.TestCase):
          home page I see a banner with "Welcome to FlowTow"."""
 
         result = self.app.get('/')
-        print(result)
         self.assertIn("Welcome to FlowTow", result)
-
 
     def testImagesPresent(self):
         """As a visitor to the site, when I load the home page I
@@ -54,13 +73,6 @@ class Level1FunctionalTests(unittest.TestCase):
             # look for just one image
             img = div.find_all('img')
             self.assertEqual(1, len(img))
-
-            # can we actually get the image
-            # find the URL
-            url = img[0]['src']
-            # try requesting it and test the content-type header returned
-            newresult = self.app.get(url)
-            self.assertEqual('image/jpeg', newresult.content_type)
 
     def testImageLikeForms(self):
         """As a visitor to the site, when I load the home page I see a button below each image with the text "Like".
@@ -93,7 +105,6 @@ class Level1FunctionalTests(unittest.TestCase):
 
             self.assertEqual(form['action'], '/like', "form action should be /like")
 
-
     def testAboutSiteLink(self):
         """As a visitor to the site, when I load the home page I see a link to another page
 called "About this site".
@@ -104,8 +115,6 @@ called "About this site".
         links = result.html.find_all('a')
 
         self.assertTrue(any(['About' in l.text for l in links]), "Can't find 'About this site' link")
-
-
 
     def testAboutSitePage(self):
         """As a visitor to the site, when I click on the link "About this site" I am taken to

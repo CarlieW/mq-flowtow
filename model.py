@@ -1,8 +1,9 @@
-'''
-Created on Mar 28, 2014
+"""
+Database model for the FlowTow application - provides an interface
+    to the database
 
-@author: steve
-'''
+@Author: Steve.Cassidy@mq.edu.au
+"""
 
 
 def list_images(db, n, usernick=None):
@@ -21,19 +22,19 @@ def list_images(db, n, usernick=None):
         sql = "select images.filename, timestamp, usernick from images where usernick=? order by timestamp desc limit ?"
         cursor.execute(sql, (usernick, n))
 
-
     result = []
     for row in cursor:
-        rowdict = {'filename': row[0], 'timestamp': row[1], 'user': row[2], 'likes': count_likes(db, row[0])}
+        rowdict = {'filename': row[0],
+                   'timestamp': row[1],
+                   'user': row[2],
+                   'likes': count_likes(db, row[0])}
         result.append(rowdict)
 
     return result
 
 
-
 def add_image(db, filename, usernick):
     """Add this image to the database for the given user"""
-
 
     cursor = db.cursor()
 

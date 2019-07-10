@@ -3,32 +3,42 @@ Created on Mar 3, 2014
 
 @author: steve
 '''
-import unittest
 import webtest
-import bottle
-import os
 from urllib.parse import urlparse
+import unittest
+from webtest import TestApp
+import bottle
+from bottle.ext import sqlite, beaker
+import sqlite3
+import os
 
 import main
-from database import COMP249Db
+import database
+
+
+DATABASE_NAME = "test.db"
+main.app.install(sqlite.Plugin(dbfile=DATABASE_NAME))
+
+# make sure bottle looks for templates in the main directory, not this one
+bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(__file__), p) for p in ['../', '../views/']]
 
 
 class Level3FunctionalTests(unittest.TestCase):
 
     def setUp(self):
-        self.app = webtest.TestApp(main.application)
-        self.db = COMP249Db()
-        self.db.create_tables()
-        self.db.sample_data()
-        self.users = self.db.users
+
+        session_opts = {
+            'session.type': 'memory',
+        }
+        beaker_app = beaker.middleware.SessionMiddleware(main.app, session_opts)
+        db = sqlite3.connect(DATABASE_NAME)
+        database.create_tables(db)
+        self.users, self.images = database.sample_data(db)
+        self.app = TestApp(beaker_app)
         bottle.debug() # force debug messages in error pages returned by webtest
 
-
     def tearDown(self):
-        # reset the database to a default state
-        self.db.create_tables()
-        self.db.sample_data()
-
+        pass
 
     def doLogin(self, email, password):
         """Perform a login,
@@ -42,7 +52,6 @@ class Level3FunctionalTests(unittest.TestCase):
         loginform['password'] = password
 
         return loginform.submit()
-
 
     def testMyImagesForm(self):
         """As a registered user, when I load the "My Images" page I see a form that has

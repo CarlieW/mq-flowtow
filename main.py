@@ -1,142 +1,132 @@
-'''
-Created on Mar 4, 2014
+"""
+ Main application for FlowTow image sharing app
 
-@author: steve
-'''
+ @Author: Steve.Cassidy@mq.edu.au
 
-from bottle import Bottle, template, static_file, request, response, HTTPError, debug, redirect
-import interface
-import users
-from database import COMP249Db
+"""
 
-# for deployment we need to make sure we're in the right directory
+import bottle
 import os
-if not __name__=='__main__':
-    os.chdir(os.path.dirname(__file__))
+import model
+import users
 
-COOKIE_NAME = 'sessionid'
+app = bottle.Bottle()
 
-application = Bottle()
-debug()
 
-@application.route('/static/<filename:path>')
+@app.route('/static/<filename:path>')
 def static(filename):
-    return static_file(filename=filename, root='static')
+    return bottle.static_file(filename=filename, root='static')
 
 
-@application.route('/about')
+@app.route('/about')
 def about():
-    """generate the about page"""
+    """Generate the about page"""
 
-    return template('about', title="About FlowTow")
-
-@application.route('/')
-def index():
-
-    db = COMP249Db()
-
-    info = {}
-
-    info['user'] = users.session_user(db)
-    info['title'] = "¡Welcome to FlowTow!"
-
-    info['images'] = interface.list_images(db, 3)
-
-    return template('index', info)
-
-@application.route('/my')
-def my():
-
-    db = COMP249Db()
-
-    info = {}
-
-    info['user'] = users.session_user(db)
-
-    if info['user'] == None:
-        # redirect to the home page
-        response.status = 303
-        response.set_header('Location', '/')
-        return "Redirect"
+    return bottle.template('about', title="About FlowTow!")
 
 
-    info['title'] = "¡Welcome to FlowTow!"
+@app.route('/')
+def index(db):
+    """Generate the main page of the app"""
 
-    info['images'] = interface.list_images(db, 3, info['user'])
+    info = {
+        'user': users.session_user(db),
+        'title': "¡Welcome to FlowTow!",
+        'images': model.list_images(db, 3)
+    }
 
-    return template('index', info)
+    return bottle.template('index', info)
 
 
-@application.post('/like')
-def like():
+@app.route('/my')
+def my(db):
+    """Generate the view for an individual containing
+    all of their images
+    """
+
+    user = users.session_user(db)
+
+    if user is None:
+        return bottle.redirect('/')
+
+    info = {
+        'user': user,
+        'title': "¡Welcome to FlowTow!",
+        'images': model.list_images(db, 3, user['nick'])
+    }
+
+    return bottle.template('index', info)
+
+
+@app.post('/like')
+def like(db):
     """Add a like to an existing image"""
 
-    filename = request.forms.get('filename')
+    filename = bottle.request.forms.get('filename')
 
-    db = COMP249Db()
-    usernick = users.session_user(db)
-    interface.add_like(db, filename, usernick)
+    user = users.session_user(db)
+    model.add_like(db, filename, user)
 
-    redirect('/')
-
+    bottle.redirect('/')
 
 
-@application.post('/login')
-def login():
+@app.post('/login')
+def login(db):
     """Process a login request"""
 
-    db = COMP249Db()
+    nick = bottle.request.forms.get('nick')
+    password = bottle.request.forms.get('password')
 
-    nick = request.forms.get('nick')
-    password = request.forms.get('password')
-
-    if users.check_login(db, nick, password):
-
-        users.generate_session(db, nick)
-
-        redirect('/')
-
+    if users.login(db, nick, password):
+        bottle.redirect('/')
     else:
-        return template('general', title='Login Error', content='Login Failed, please try again')
+        return bottle.template('general', title='Login Error', content='Login Failed, please try again')
 
-@application.post('/logout')
+
+@app.post('/logout')
 def logout():
     """Process a logout request"""
 
-    db = COMP249Db()
-
-    usernick = users.session_user(db)
-    users.delete_session(db, usernick)
-
-    redirect('/')
+    users.logout()
+    bottle.redirect('/')
 
 
+@app.post('/upload')
+def upload(db):
+    """Process a file upload request"""
 
-@application.post('/upload')
-def upload():
-
-    db = COMP249Db()
-
-    usernick = users.session_user(db)
-    if usernick == None:
+    user = users.session_user(db)
+    if user is None:
         # not allowed to upload, redirect to home
-        response.status = 303
-        response.set_header('Location', '/')
-        return "Redirect"
+        return bottle.redirect('/')
 
-    imagefile = request.files.get('imagefile')
+    imagefile = bottle.request.files.get('imagefile')
 
     if imagefile is not None:
-        imagefile.save('static/images', overwrite=True)
+        imagefile.save(os.path.join(os.path.dirname(__file__), 'static', 'images'), overwrite=True)
 
-        interface.add_image(db, imagefile.filename, usernick)
+        model.add_image(db, imagefile.filename, user)
 
-    response.status = 303
-    response.set_header('Location', '/my')
-    return "Redirect"
-
+    return bottle.redirect('/my')
 
 
 if __name__ == '__main__':
-    debug()
-    application.run()
+
+    from bottle.ext import sqlite, beaker
+    from database import DATABASE_NAME
+
+    # bottle debug mode
+    bottle.debug()
+
+    # install the database plugin
+    app.install(sqlite.Plugin(dbfile=DATABASE_NAME))
+
+    # install the session middleware
+    session_opts = {
+        'session.type': 'memory',
+    }
+    beaker_app = beaker.middleware.SessionMiddleware(app, session_opts)
+
+    bottle.run(app=beaker_app, debug=True, port=8010)
+
+
