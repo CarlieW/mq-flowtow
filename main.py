@@ -65,7 +65,11 @@ def like(db):
     filename = bottle.request.forms.get('filename')
 
     user = users.session_user(db)
-    model.add_like(db, filename, user)
+    if user is not None:
+        nick = user['nick']
+    else:
+        nick = None
+    model.add_like(db, filename, nick)
 
     bottle.redirect('/')
 
