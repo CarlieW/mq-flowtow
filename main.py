@@ -105,7 +105,7 @@ def upload(db):
     if imagefile is not None:
         imagefile.save(os.path.join(os.path.dirname(__file__), 'static', 'images'), overwrite=True)
 
-        model.add_image(db, imagefile.filename, user)
+        model.add_image(db, imagefile.filename, user['nick'])
 
     return bottle.redirect('/my')
 
